@@ -1,0 +1,18 @@
+{
+	"geode": "3.8.1",
+	"gd": {
+		"win": "2.206"
+	},
+	"id": "zilko.platformer_ghosts",
+	"name": "Platformer Ghosts",
+	"version": "v1.0.0",
+	"developer": "Zilko",
+	"description": "Adds ghosts to your platformer records.",
+	"dependencies": [
+        {
+            "id": "cvolton.level-id-api",
+            "version": ">=v1.0.0",
+            "importance": "required"
+        }
+    ]
+}
