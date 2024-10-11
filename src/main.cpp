@@ -3,8 +3,17 @@
 #include "Player/Player.hpp"
 
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/CCKeyboardDispatcher.hpp>
+
+bool shouldReturn(PlayLayer* pl) {
+    return !pl->m_levelSettings->m_platformerMode || pl->m_isTestMode || pl->m_isPracticeMode || pl->m_levelEndAnimationStarted;
+}
+
+bool shouldReturn(GJBaseGameLayer* pl) {
+    return !pl->m_levelSettings->m_platformerMode || pl->m_isTestMode || pl->m_isPracticeMode || pl->m_levelEndAnimationStarted;
+}
 
 class $modify(GameLayer, GJBaseGameLayer) {
 
@@ -16,7 +25,7 @@ class $modify(GameLayer, GJBaseGameLayer) {
         if (!GJBaseGameLayer::canBeActivatedByPlayer(p0, p1)) return false;
 
         if (!PlayLayer::get()) return true;
-		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || m_levelEndAnimationStarted) return true;
+		if (shouldReturn(this)) return true;
         if (p0 != m_player1 && p0 != m_player2) return true;
 
         int id = p1->m_objectID;
@@ -30,7 +39,7 @@ class $modify(GameLayer, GJBaseGameLayer) {
     void processCommands(float dt) {
         GJBaseGameLayer::processCommands(dt);
 
-        if (m_levelEndAnimationStarted) return;
+        if (m_levelEndAnimationStarted || !PlayLayer::get()) return;
 
 		if (m_gameState.m_currentProgress <= 1) {
             Recorder::resetState(m_levelSettings->m_platformerMode && !m_isTestMode && !m_isPracticeMode);
@@ -46,12 +55,70 @@ class $modify(GameLayer, GJBaseGameLayer) {
 
 		PlayLayer* pl = PlayLayer::get();
 		if (!pl) return;
-		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || m_levelEndAnimationStarted) return;
+		if (shouldReturn(this)) return;
 
-        Recorder::handleRecording(this, m_fields->totalFrame);
+        Recorder::handleRecording(PlayLayer::get(), m_fields->totalFrame);
         Player::handlePlaying(this, m_fields->totalFrame);
-		
 	}
+
+};
+
+class $modify(PlayerObject) {
+
+    void playDeathEffect() {
+        PlayerObject::playDeathEffect();
+
+        PlayLayer* pl = PlayLayer::get();
+        if (!pl) return;
+
+        if (shouldReturn(pl)) return;
+        if (this != pl->m_player1 && this != pl->m_player2) return;
+
+        int frame = static_cast<GameLayer*>(pl->m_player1->m_gameLayer)->m_fields->totalFrame;
+        Recorder::handleEffect(frame, EffectType::Death, this == pl->m_player2);
+    }
+
+    void playSpawnEffect() {
+        PlayerObject::playSpawnEffect();
+
+        PlayLayer* pl = PlayLayer::get();
+        if (!pl) return;
+
+        if (shouldReturn(pl)) return;
+        if (this != pl->m_player1 && this != pl->m_player2) return;
+
+        int frame = static_cast<GameLayer*>(pl->m_player1->m_gameLayer)->m_fields->totalFrame;
+        Recorder::handleEffect(frame, EffectType::Respawn, this == pl->m_player2);
+    }
+
+    void playCompleteEffect(bool b1, bool b2) {
+        PlayerObject::playCompleteEffect(b1, b2);
+
+        PlayLayer* pl = PlayLayer::get();
+        if (!pl) return;
+
+        if (!pl->m_levelSettings->m_platformerMode || pl->m_isTestMode || pl->m_isPracticeMode) return;
+        if (this != pl->m_player1 && this != pl->m_player2) return;
+
+        int frame = static_cast<GameLayer*>(pl->m_player1->m_gameLayer)->m_fields->totalFrame;
+        Recorder::handleEffect(frame, EffectType::Complete, this == pl->m_player2);
+        log::debug("wa");
+    }
+
+    void incrementJumps() {
+        PlayerObject::incrementJumps();
+
+        PlayLayer* pl = PlayLayer::get();
+        if (!pl) return;
+
+        if (shouldReturn(pl)) return;
+        if (this != pl->m_player1 && this != pl->m_player2) return;
+
+        if (this == pl->m_player2)
+            Recorder::get().jumped2 = true;
+        else
+            Recorder::get().jumped1 = true;
+    }
 
 };
 
