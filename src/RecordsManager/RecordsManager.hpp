@@ -14,8 +14,9 @@ public:
     static std::filesystem::path getBestCompletion(int);
     static std::vector<Action> getCompletionActions(std::filesystem::path);
     static std::unordered_map<VehicleType, int> getCompletionIcons(std::filesystem::path);
-    static std::unordered_map<std::string, int> getCompletionColors(std::filesystem::path);
+    static PlayerColors getCompletionColors(std::filesystem::path);
     static float getCompletionTime(std::filesystem::path);
+    static Replay getCompletionReplay(std::filesystem::path);
 
     static void savePositionAction(cocos2d::CCPoint&, cocos2d::CCPoint&, float&, float&, nlohmann::json&, Action);
     static void saveVehicleAction(nlohmann::json&, Action);

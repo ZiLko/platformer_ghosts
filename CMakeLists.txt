@@ -11,6 +11,7 @@ add_library(${PROJECT_NAME} SHARED
     src/Player/Player.cpp
     src/Recorder/Recorder.cpp
     src/RecordsManager/RecordsManager.cpp
+    src/UI/RecordsLayer.cpp
 )
 
 if (NOT DEFINED ENV{GEODE_SDK})

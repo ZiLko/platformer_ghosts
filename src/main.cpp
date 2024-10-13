@@ -1,11 +1,25 @@
 #include "RecordsManager/RecordsManager.hpp"
 #include "Recorder/Recorder.hpp"
+#include "UI/RecordsLayer.hpp"
 #include "Player/Player.hpp"
 
 #include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/CCKeyboardDispatcher.hpp>
+
+class $modify(CCKeyboardDispatcher) {
+
+    bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool down, bool repeat) {
+        if (key == cocos2d::enumKeyCodes::KEY_J && down) {
+            RecordsLayer::open();
+        }
+
+        return CCKeyboardDispatcher::dispatchKeyboardMSG(key, down, repeat);
+    }
+
+};
 
 bool shouldReturn(PlayLayer* pl) {
     return !pl->m_levelSettings->m_platformerMode || pl->m_isTestMode || pl->m_isPracticeMode || pl->m_levelEndAnimationStarted;
@@ -102,7 +116,6 @@ class $modify(PlayerObject) {
 
         int frame = static_cast<GameLayer*>(pl->m_player1->m_gameLayer)->m_fields->totalFrame;
         Recorder::handleEffect(frame, EffectType::Complete, this == pl->m_player2);
-        log::debug("wa");
     }
 
     void incrementJumps() {
@@ -142,4 +155,46 @@ class $modify(PlayLayer) {
 		RecordsManager::handleCompletion(levelId, completionTime, Recorder::getActions());
 	}
 	
+};
+
+class $modify(PauseLayer) {
+    void customSetup() {
+        PauseLayer::customSetup();
+
+        PlayLayer* pl = PlayLayer::get();
+        if (!pl) return;
+
+        if (!pl->m_levelSettings->m_platformerMode || pl->m_isPracticeMode || pl->m_isTestMode) return;
+
+        CCSprite* sprite = CCSprite::createWithSpriteFrameName("GJ_plainBtn_001.png");
+        sprite->setScale(1.05);        
+
+        GameManager* gm = GameManager::get();
+
+        SimplePlayer* icon = SimplePlayer::create(gm->getPlayerFrame());
+        icon->setOpacity(160);
+        icon->setScale(0.75);
+        icon->setRotation(15);
+
+        sprite->addChild(icon);
+        icon->setPosition(sprite->getContentSize() / 2);
+
+        CCMenuItemSpriteExtra* btn = CCMenuItemSpriteExtra::create(sprite,
+            this,
+            menu_selector(RecordsLayer::open)
+        );
+
+        if (!Loader::get()->isModLoaded("geode.node-ids")) {
+            CCMenu* menu = CCMenu::create();
+            menu->setID("button"_spr);
+            addChild(menu);
+            btn->setPosition({214, 88});
+            menu->addChild(btn);
+            return;
+        }
+
+        CCNode* menu = this->getChildByID("left-button-menu");
+        menu->addChild(btn);
+        menu->updateLayout();
+    }
 };

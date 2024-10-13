@@ -36,9 +36,9 @@ void Player::setup(PlayLayer* pl) {
         p.actions = RecordsManager::getCompletionActions(bestCompletion);
         p.icons = RecordsManager::getCompletionIcons(bestCompletion);
 
-        std::unordered_map<std::string, int> colors = RecordsManager::getCompletionColors(bestCompletion);
-        setPlayerColors(p.player1, false, colors.at("color1"), colors.at("color2"), colors.at("glow_color"), colors.at("glow_enabled"));
-        setPlayerColors(p.player2, true, colors.at("color1"), colors.at("color2"), colors.at("glow_color"), colors.at("glow_enabled"));
+        PlayerColors colors = RecordsManager::getCompletionColors(bestCompletion);
+        setPlayerColors(p.player1, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+        setPlayerColors(p.player2, true, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
     }
 }
 

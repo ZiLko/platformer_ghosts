@@ -14,5 +14,11 @@
             "version": ">=v1.0.0",
             "importance": "required"
         }
-    ]
+    ],
+	"resources": {
+		"sprites": [
+			"resources/spectateGhost.png",
+			"resources/raceGhost.png"
+		]
+	}
 }

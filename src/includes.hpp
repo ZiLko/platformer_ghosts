@@ -90,6 +90,23 @@ struct Action {
 	std::variant<PositionData, MiniData, FlipData, VehicleData, SidewaysData, AnimationData, EffectData, bool> data;
 };
 
+struct PlayerColors {
+	int color1 = 1;
+	int color2 = 1;
+	int glowColor = 1;
+	bool glowEnabled = false;
+};
+
+struct Replay {
+	float time;
+	int levelId;
+	std::string username;
+	std::string levelName;
+	std::vector<Action> actions;
+	std::unordered_map<VehicleType, int> icons;
+	PlayerColors colors;
+};
+
 const std::unordered_set<int> gamemodePortals = {12, 13, 47, 111, 660, 745, 1331, 1933};
 
 const std::unordered_set<int> nonInvertedVehicles = {

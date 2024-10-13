@@ -25,16 +25,16 @@ void RecordsManager::handleCompletion(int levelId, float completionTime, std::ve
         return saveCompletion(levelFolder, completionTime, actions);
     }
 
-    std::filesystem::path bestCompletion = getBestCompletion(levelId);
-    float bestTime = getCompletionTime(bestCompletion);
+    // std::filesystem::path bestCompletion = getBestCompletion(levelId);
+    // float bestTime = getCompletionTime(bestCompletion);
 
-    if (completionTime < bestTime || bestTime == 0.f) {
+    // if (completionTime < bestTime || bestTime == 0.f) {
 
-        if (!bestCompletion.empty())
-            std::filesystem::remove(bestCompletion);
+    //     if (!bestCompletion.empty())
+    //         std::filesystem::remove(bestCompletion);
 
         saveCompletion(levelFolder, completionTime, actions);
-    }
+    // }
 }
 
 float RecordsManager::getCompletionTime(std::filesystem::path path) {
@@ -71,6 +71,24 @@ std::filesystem::path RecordsManager::getBestCompletion(int levelId) {
     return ret;
 }
 
+Replay RecordsManager::getCompletionReplay(std::filesystem::path path) {
+    Replay replay;
+
+    nlohmann::json json = loadJSON(path);
+    if (json.empty()) return replay;
+
+    replay.actions = getCompletionActions(path);
+    replay.colors = getCompletionColors(path);
+    replay.icons = getCompletionIcons(path);
+
+    replay.levelName = json["level_name"].get<std::string>();
+    replay.username = json["username"].get<std::string>();
+    replay.levelId = json["level_id"].get<int>();
+    replay.time = json["time"].get<float>();
+
+    return replay;
+}
+
 std::vector<Action> RecordsManager::getCompletionActions(std::filesystem::path path) {
     std::vector<Action> actions;
 
@@ -87,11 +105,11 @@ std::vector<Action> RecordsManager::getCompletionActions(std::filesystem::path p
             case ActionType::Animation: loadAnimationAction(action, actionJson); break;
             case ActionType::Position: loadPositionAction(action, actionJson); break;
             case ActionType::Sideways: loadSidewaysAction(action, actionJson); break;
+            case ActionType::Dual: action.data = actionJson["d"].get<bool>(); break;
             case ActionType::Vehicle: loadVehicleAction(action, actionJson); break;
+            case ActionType::Effect: loadEffectAction(action, actionJson); break;
             case ActionType::Flip: loadFlipAction(action, actionJson); break;
             case ActionType::Mini: loadMiniAction(action, actionJson); break;
-            case ActionType::Effect: loadEffectAction(action, actionJson); break;
-            case ActionType::Dual: action.data = actionJson["d"].get<bool>(); break;
         }
 
         actions.push_back(action);
@@ -187,16 +205,16 @@ std::unordered_map<VehicleType, int> RecordsManager::getCompletionIcons(std::fil
     return ret;
 }
 
-std::unordered_map<std::string, int> RecordsManager::getCompletionColors(std::filesystem::path path) {
-    std::unordered_map<std::string, int> ret;
+PlayerColors RecordsManager::getCompletionColors(std::filesystem::path path) {
+    PlayerColors ret;
 
     nlohmann::json json = loadJSON(path);
     if (json.empty()) return ret;
 
-    ret["color1"] = json["colors"]["color1"].get<int>();
-    ret["color2"] = json["colors"]["color2"].get<int>();
-    ret["glow_color"] = json["colors"]["glow_color"].get<int>();
-    ret["glow_enabled"] = json["colors"]["glow_enabled"].get<int>();
+    ret.color1 = json["colors"]["color1"].get<int>();
+    ret.color2 = json["colors"]["color2"].get<int>();
+    ret.glowColor = json["colors"]["glow_color"].get<int>();
+    ret.glowEnabled = json["colors"]["glow_enabled"].get<bool>();
 
     return ret;
 }
