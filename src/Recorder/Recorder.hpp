@@ -20,6 +20,8 @@ public:
     bool jumped2 = false;
 
     int updatePlayer2Animation = 0;
+    int fps = 60;
+    bool disabled = false;
 
     cocos2d::CCPoint prevPos1 = ccp(0, 0);
     cocos2d::CCPoint prevPos2 = ccp(0, 0);
@@ -38,6 +40,7 @@ public:
     static void handleRecording(PlayLayer*, int);
     static void handlePortal(int, int, bool, PlayerObject*);
     static void handleEffect(int, EffectType, bool);
+    static void handleInput(int, int, bool, bool);
 
     static void recordVehicleAction(VehicleType, int, bool);
     static void recordFlipAction(int, bool, bool, bool);

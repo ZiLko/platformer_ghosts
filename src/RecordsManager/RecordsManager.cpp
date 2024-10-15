@@ -17,6 +17,26 @@ nlohmann::json RecordsManager::loadJSON(std::filesystem::path path) {
     return json;
 }
 
+std::vector<Replay> RecordsManager::getLevelCompletions(int levelId) {
+    std::vector<Replay> ret;
+
+    std::filesystem::path levelFolder = Mod::get()->getSaveDir() / std::to_string(levelId);
+	if (!std::filesystem::exists(levelFolder)) return ret;
+
+    std::vector<std::filesystem::path> replays = file::readDirectory(levelFolder).value();
+
+    for (std::filesystem::path path : replays) {
+        Replay replay = getCompletionReplay(path);
+        ret.push_back(replay);
+    }
+    
+    std::sort(ret.begin(), ret.end(), [](Replay a, Replay b) {
+        return a.time < b.time;
+    });
+
+    return ret;
+}
+
 void RecordsManager::handleCompletion(int levelId, float completionTime, std::vector<Action> actions) {		
     std::filesystem::path levelFolder = Mod::get()->getSaveDir() / std::to_string(levelId);
 
@@ -49,26 +69,11 @@ float RecordsManager::getCompletionTime(std::filesystem::path path) {
     return json["time"];
 }
 
-std::filesystem::path RecordsManager::getBestCompletion(int levelId) {
-    std::filesystem::path levelFolder = Mod::get()->getSaveDir() / std::to_string(levelId);
-
-    if (!std::filesystem::exists(levelFolder))
-        return "";
-
-	std::vector<std::filesystem::path> records = file::readDirectory(levelFolder).value();
-
-    std::filesystem::path ret = "";
-    float bestTime = 0.f;
-
-    for (std::filesystem::path path : records) {
-        float time = getCompletionTime(path);
-        if (time > bestTime) {
-            bestTime = time;
-            ret = path;
-        }
-    } 
-
-    return ret;
+Replay RecordsManager::getBestCompletion(int levelId) {
+    std::vector<Replay> replays = getLevelCompletions(levelId);
+    Replay replay;
+    if (replays.empty()) return replay;
+    return replays[0];
 }
 
 Replay RecordsManager::getCompletionReplay(std::filesystem::path path) {
@@ -105,11 +110,12 @@ std::vector<Action> RecordsManager::getCompletionActions(std::filesystem::path p
             case ActionType::Animation: loadAnimationAction(action, actionJson); break;
             case ActionType::Position: loadPositionAction(action, actionJson); break;
             case ActionType::Sideways: loadSidewaysAction(action, actionJson); break;
-            case ActionType::Dual: action.data = actionJson["d"].get<bool>(); break;
             case ActionType::Vehicle: loadVehicleAction(action, actionJson); break;
             case ActionType::Effect: loadEffectAction(action, actionJson); break;
             case ActionType::Flip: loadFlipAction(action, actionJson); break;
             case ActionType::Mini: loadMiniAction(action, actionJson); break;
+            case ActionType::Input: loadInputAction(action, actionJson); break;
+            case ActionType::Dual: action.data = actionJson["d"].get<bool>(); break;
         }
 
         actions.push_back(action);
@@ -174,6 +180,7 @@ void RecordsManager::saveCompletion(std::filesystem::path folder, float time, st
             case ActionType::Mini: saveMiniAction(actionJson, action); break;
             case ActionType::Flip: saveFlipAction(actionJson, action); break;
             case ActionType::Effect: saveEffectAction(actionJson, action); break;
+            case ActionType::Input: saveInputAction(actionJson, action); break;
             case ActionType::Dual: actionJson["d"] = std::get<bool>(action.data); break;
         }
 
@@ -221,23 +228,23 @@ PlayerColors RecordsManager::getCompletionColors(std::filesystem::path path) {
 
 void RecordsManager::savePositionAction(cocos2d::CCPoint& prev1, cocos2d::CCPoint& prev2, float& prevRot1, float& prevRot2, nlohmann::json& json, Action action) {
     PositionData data = std::get<PositionData>(action.data);
-    cocos2d::CCPoint pos1 = data.p1Data.position;
-    cocos2d::CCPoint pos2 = data.p2Data.position;
-    float rot1 = data.p1Data.rotation;
-    float rot2 = data.p2Data.rotation;
+    cocos2d::CCPoint pos1 = data.p1.position;
+    cocos2d::CCPoint pos2 = data.p2.position;
+    float rot1 = data.p1.rotation;
+    float rot2 = data.p2.rotation;
             
     if (pos1.x != 0 && pos1.x != prev1.x)
         json["d"]["x1"] = pos1.x;
     if (pos1.y != 0 && pos1.y != prev1.y)
         json["d"]["y1"] = pos1.y;
-    if (rot1 != 0.f && rot1 != prevRot1)
+    if ((rot1 != 0.f && rot1 != prevRot1) || data.p1.rotationZero)
         json["d"]["r1"] = rot1;
 
     if (pos2.x != 0 && pos2.x != prev2.x)
         json["d"]["x2"] = pos2.x;
     if (pos2.y != 0 && pos2.y != prev2.y)
         json["d"]["y2"] = pos2.y;
-    if (rot2 != 0.f && rot2 != prevRot2)
+    if ((rot2 != 0.f && rot2 != prevRot2) || data.p2.rotationZero)
         json["d"]["r2"] = rot2;
 
     prev1 = pos1;
@@ -285,6 +292,13 @@ void RecordsManager::saveEffectAction(nlohmann::json& json, Action action) {
     json["d"]["p2"] = data.player2;
 }
 
+void RecordsManager::saveInputAction(nlohmann::json& json, Action action) {
+    InputData data = std::get<InputData>(action.data);
+    json["d"]["b"] = data.button;
+    json["d"]["d"] = data.down;
+    json["d"]["p2"] = data.player2;
+}
+
 void RecordsManager::loadPositionAction(Action& action, nlohmann::json json) {
     float x1 = json["d"].contains("x1") ? json["d"]["x1"].get<float>() : 0.f;
     float y1 = json["d"].contains("y1") ? json["d"]["y1"].get<float>() : 0.f;
@@ -294,9 +308,12 @@ void RecordsManager::loadPositionAction(Action& action, nlohmann::json json) {
     float y2 = json["d"].contains("y2") ? json["d"]["y2"].get<float>() : 0.f;    
     float r2 = json["d"].contains("r2") ? json["d"]["r2"].get<float>() : 0.f;
 
-    PlayerData p1Data = { ccp(x1, y1), r1 };
-    PlayerData p2Data = { ccp(x2, y2), r2 };
-    PositionData data = { p1Data, p2Data };
+    PlayerData p1 = { ccp(x1, y1), r1 };
+    PlayerData p2 = { ccp(x2, y2), r2 };
+    PositionData data = { p1, p2 };
+
+    if (json["d"].contains("r1") && r1 == 0.f) data.p1.rotationZero = true;
+    if (json["d"].contains("r2") && r2 == 0.f) data.p2.rotationZero = true;
                 
     action.data = data;
 }
@@ -345,6 +362,14 @@ void RecordsManager::loadAnimationAction(Action& action, nlohmann::json json) {
 void RecordsManager::loadEffectAction(Action& action, nlohmann::json json) {
     EffectData data;
     data.effect = static_cast<EffectType>(json["d"]["effect"].get<int>());
+    data.player2 = json["d"]["p2"].get<bool>();
+    action.data = data;
+}
+
+void RecordsManager::loadInputAction(Action& action, nlohmann::json json) {
+    InputData data;
+    data.button = json["d"]["b"].get<int>();
+    data.down = json["d"]["d"].get<bool>();
     data.player2 = json["d"]["p2"].get<bool>();
     action.data = data;
 }

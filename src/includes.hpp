@@ -15,7 +15,8 @@ enum ActionType {
 	Dual = 5,
 	Mini = 6,
 	Flip = 7,
-	Sideways = 8
+	Sideways = 8,
+	Input = 9
 };
 
 enum AnimationType {
@@ -40,6 +41,12 @@ enum EffectType {
 	Death = 1,
 	Respawn = 2,
 	Complete = 3,
+};
+
+struct InputData {
+	int button;
+	bool down;
+	bool player2;
 };
 
 struct EffectData {
@@ -77,17 +84,18 @@ struct VehicleData {
 struct PlayerData {
 	cocos2d::CCPoint position = { 0.f, 0.f };
 	float rotation = 0.f;
+	bool rotationZero = false;
 };
 
 struct PositionData {
-	PlayerData p1Data;
-	PlayerData p2Data;
+	PlayerData p1;
+	PlayerData p2;
 };
 
 struct Action {
 	ActionType type = ActionType::Position;
 	unsigned int frame = 1;
-	std::variant<PositionData, MiniData, FlipData, VehicleData, SidewaysData, AnimationData, EffectData, bool> data;
+	std::variant<PositionData, MiniData, FlipData, VehicleData, SidewaysData, AnimationData, EffectData, InputData, bool> data;
 };
 
 struct PlayerColors {

@@ -9,6 +9,23 @@
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/CCKeyboardDispatcher.hpp>
 
+$execute {
+    geode::listenForSettingChanges("smoothness", +[](int64_t value) {
+        Recorder::get().fps = value;
+    });
+    geode::listenForSettingChanges("player_disabled", +[](bool value) {
+        Player::get().disabled = value;
+    });
+    geode::listenForSettingChanges("recorder_disabled", +[](bool value) {
+        Recorder::get().disabled = value;
+    });
+
+    Player::get().disabled = Mod::get()->getSettingValue<bool>("player_disabled");
+    Recorder::get().disabled = Mod::get()->getSettingValue<bool>("recorder_disabled");
+    Recorder::get().fps = Mod::get()->getSettingValue<int64_t>("smoothness");
+
+};
+
 class $modify(CCKeyboardDispatcher) {
 
     bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool down, bool repeat) {
@@ -33,6 +50,7 @@ class $modify(GameLayer, GJBaseGameLayer) {
 
 	struct Fields {
 		unsigned int totalFrame = 0;
+        bool levelComplete = false;
 	};
 
     bool canBeActivatedByPlayer(PlayerObject * p0, EffectGameObject * p1) {
@@ -52,8 +70,9 @@ class $modify(GameLayer, GJBaseGameLayer) {
 
     void processCommands(float dt) {
         GJBaseGameLayer::processCommands(dt);
-
-        if (m_levelEndAnimationStarted || !PlayLayer::get()) return;
+        
+        PlayLayer* pl = PlayLayer::get();
+		if (!pl) return;
 
 		if (m_gameState.m_currentProgress <= 1) {
             Recorder::resetState(m_levelSettings->m_platformerMode && !m_isTestMode && !m_isPracticeMode);
@@ -62,47 +81,92 @@ class $modify(GameLayer, GJBaseGameLayer) {
         }
 
 		m_fields->totalFrame++;
-    }
 
-	void update(float dt) {
-		GJBaseGameLayer::update(dt);
+        if (Player::get().isSpectating && m_levelEndAnimationStarted)
+            Player::handleCompletion();
 
-		PlayLayer* pl = PlayLayer::get();
-		if (!pl) return;
+        if (!m_fields->levelComplete && m_levelEndAnimationStarted) {
+            m_fields->levelComplete = true;
+            Player::playCompleteEffect();
+
+            Loader::get()->queueInMainThread([this] {
+                cocos2d::CCPoint pos1 = m_player1->getPosition();
+                cocos2d::CCPoint pos2 = m_player2->getPosition();
+
+                Action action;
+                action.type = ActionType::Position;
+                action.frame = m_fields->totalFrame + 1;
+
+                PlayerData p1Data = { pos1, 0.f };
+                PlayerData p2Data = { pos2, 0.f };
+                PositionData data = { p1Data, p2Data };
+
+                action.data = data;
+                Recorder::get().actions.push_back(action);
+            });
+        }
+        
+
 		if (shouldReturn(this)) return;
 
-        Recorder::handleRecording(PlayLayer::get(), m_fields->totalFrame);
+        Recorder::handleRecording(pl, m_fields->totalFrame);
         Player::handlePlaying(this, m_fields->totalFrame);
-	}
+    }
 
 };
 
 class $modify(PlayerObject) {
 
+    bool shouldReturnPlayer() {
+        PlayLayer* pl = PlayLayer::get();
+        if (!pl) return true;
+
+        if (shouldReturn(pl)) return true;
+        if (this != pl->m_player1 && this != pl->m_player2) return true;
+
+        return false;
+    }
+
+    bool pushButton(PlayerButton btn) {
+        if (!Player::canClick()) return false;
+        if (!PlayerObject::pushButton(btn)) return false;
+
+        if (shouldReturnPlayer()) return true;
+
+        int frame = static_cast<GameLayer*>(m_gameLayer)->m_fields->totalFrame;
+        Recorder::handleInput(frame, static_cast<int>(btn), true, this == PlayLayer::get()->m_player2);
+
+        return true;
+    }
+
+    bool releaseButton(PlayerButton btn) {
+        if (!Player::canClick()) return false;
+        if (!PlayerObject::releaseButton(btn)) return false;
+
+        if (shouldReturnPlayer()) return true;
+        
+        int frame = static_cast<GameLayer*>(m_gameLayer)->m_fields->totalFrame;
+        Recorder::handleInput(frame, static_cast<int>(btn), false, this == PlayLayer::get()->m_player2);
+
+        return true;
+    }
+
     void playDeathEffect() {
         PlayerObject::playDeathEffect();
 
-        PlayLayer* pl = PlayLayer::get();
-        if (!pl) return;
+        if (shouldReturnPlayer()) return;
 
-        if (shouldReturn(pl)) return;
-        if (this != pl->m_player1 && this != pl->m_player2) return;
-
-        int frame = static_cast<GameLayer*>(pl->m_player1->m_gameLayer)->m_fields->totalFrame;
-        Recorder::handleEffect(frame, EffectType::Death, this == pl->m_player2);
+        int frame = static_cast<GameLayer*>(m_gameLayer)->m_fields->totalFrame;
+        Recorder::handleEffect(frame, EffectType::Death, this == PlayLayer::get()->m_player2);
     }
 
     void playSpawnEffect() {
         PlayerObject::playSpawnEffect();
 
-        PlayLayer* pl = PlayLayer::get();
-        if (!pl) return;
+        if (shouldReturnPlayer()) return;
 
-        if (shouldReturn(pl)) return;
-        if (this != pl->m_player1 && this != pl->m_player2) return;
-
-        int frame = static_cast<GameLayer*>(pl->m_player1->m_gameLayer)->m_fields->totalFrame;
-        Recorder::handleEffect(frame, EffectType::Respawn, this == pl->m_player2);
+        int frame = static_cast<GameLayer*>(m_gameLayer)->m_fields->totalFrame;
+        Recorder::handleEffect(frame, EffectType::Respawn, this == PlayLayer::get()->m_player2);
     }
 
     void playCompleteEffect(bool b1, bool b2) {
@@ -114,20 +178,16 @@ class $modify(PlayerObject) {
         if (!pl->m_levelSettings->m_platformerMode || pl->m_isTestMode || pl->m_isPracticeMode) return;
         if (this != pl->m_player1 && this != pl->m_player2) return;
 
-        int frame = static_cast<GameLayer*>(pl->m_player1->m_gameLayer)->m_fields->totalFrame;
+        int frame = static_cast<GameLayer*>(m_gameLayer)->m_fields->totalFrame;
         Recorder::handleEffect(frame, EffectType::Complete, this == pl->m_player2);
     }
 
     void incrementJumps() {
         PlayerObject::incrementJumps();
 
-        PlayLayer* pl = PlayLayer::get();
-        if (!pl) return;
+        if (shouldReturnPlayer()) return;
 
-        if (shouldReturn(pl)) return;
-        if (this != pl->m_player1 && this != pl->m_player2) return;
-
-        if (this == pl->m_player2)
+        if (this == PlayLayer::get()->m_player2)
             Recorder::get().jumped2 = true;
         else
             Recorder::get().jumped1 = true;
@@ -139,14 +199,14 @@ class $modify(PlayLayer) {
 	
 	void setupHasCompleted() {
 		PlayLayer::setupHasCompleted();
-        Player::clearActions();
+        Player::clear();
         Player::setup(this);
 	}
 
 	void levelComplete() {
 		PlayLayer::levelComplete();
 
-		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode) return;
+		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || Player::get().isSpectating) return;
 
         auto& fields = static_cast<GameLayer*>(m_player1->m_gameLayer)->m_fields;
 		float completionTime = fields->totalFrame / 240.f; 
@@ -154,6 +214,11 @@ class $modify(PlayLayer) {
 
 		RecordsManager::handleCompletion(levelId, completionTime, Recorder::getActions());
 	}
+
+    void resetLevel() {
+        PlayLayer::resetLevel();
+        static_cast<GameLayer*>(m_player1->m_gameLayer)->m_fields->levelComplete = false;
+    }
 	
 };
 
@@ -164,7 +229,7 @@ class $modify(PauseLayer) {
         PlayLayer* pl = PlayLayer::get();
         if (!pl) return;
 
-        if (!pl->m_levelSettings->m_platformerMode || pl->m_isPracticeMode || pl->m_isTestMode) return;
+        if (!pl->m_levelSettings->m_platformerMode) return;
 
         CCSprite* sprite = CCSprite::createWithSpriteFrameName("GJ_plainBtn_001.png");
         sprite->setScale(1.05);        
@@ -196,5 +261,38 @@ class $modify(PauseLayer) {
         CCNode* menu = this->getChildByID("left-button-menu");
         menu->addChild(btn);
         menu->updateLayout();
+    }
+
+    void onResume(CCObject* obj) {
+        PlayLayer* pl = PlayLayer::get();
+        if (!pl) return PauseLayer::onResume(obj);
+        if (!Player::get().shouldRestart) return PauseLayer::onResume(obj);
+        if (pl->m_isTestMode) return PauseLayer::onResume(obj);
+
+        if (pl->m_isPracticeMode)
+            PauseLayer::onNormalMode(nullptr);
+        else
+            PauseLayer::onResume(obj);
+
+        Player::get().shouldRestart = false;
+
+        Loader::get()->queueInMainThread([pl] {
+            pl->resetLevelFromStart();
+        });
+    }
+
+    void onPracticeMode(CCObject* obj) {        
+        PlayLayer* pl = PlayLayer::get();
+
+        if (!pl) return PauseLayer::onPracticeMode(obj);
+        if (!Player::get().shouldRestart) return PauseLayer::onPracticeMode(obj);
+        if (pl->m_isTestMode) return PauseLayer::onPracticeMode(obj);
+
+        PauseLayer::onResume(nullptr);
+
+        Player::get().shouldRestart = false;
+        Loader::get()->queueInMainThread([pl] {
+            pl->resetLevelFromStart();
+        });
     }
 };

@@ -11,7 +11,8 @@ public:
     static void saveCompletion(std::filesystem::path, float, std::vector<Action>);
 
     static std::string getTypeString(ActionType);
-    static std::filesystem::path getBestCompletion(int);
+    static std::vector<Replay> getLevelCompletions(int);
+    static Replay getBestCompletion(int);
     static std::vector<Action> getCompletionActions(std::filesystem::path);
     static std::unordered_map<VehicleType, int> getCompletionIcons(std::filesystem::path);
     static PlayerColors getCompletionColors(std::filesystem::path);
@@ -25,6 +26,7 @@ public:
     static void saveSidewaysAction(nlohmann::json&, Action);
     static void saveAnimationAction(nlohmann::json&, Action);
     static void saveEffectAction(nlohmann::json&, Action);
+    static void saveInputAction(nlohmann::json&, Action);
 
     static void loadPositionAction(Action&, nlohmann::json);
     static void loadVehicleAction(Action&, nlohmann::json);
@@ -33,5 +35,6 @@ public:
     static void loadSidewaysAction(Action&, nlohmann::json);
     static void loadAnimationAction(Action&, nlohmann::json);
     static void loadEffectAction(Action&, nlohmann::json);
+    static void loadInputAction(Action&, nlohmann::json);
 
 };

@@ -20,5 +20,39 @@
 			"resources/spectateGhost.png",
 			"resources/raceGhost.png"
 		]
+	},
+	"settings": {
+		"player_disabled": {
+			"name": "Disable Ghost Playing",
+			"type": "bool",
+			"default": false
+		},
+		"recorder_disable": {
+			"name": "Disable Ghost Recording",
+			"type": "bool",
+			"default": false
+		},
+		"smoothness": {
+			"name": "Ghost Smoothness",
+			"description": "How smooth the ghosts will appear, measured in updates per second (directly proportional to the file size).",
+			"type": "int",
+			"min": 15,
+			"max": 240,
+			"default": 60
+		},
+		"p1_opacity": {
+			"name": "Player 1 ghost opacity (%)",
+			"type": "int",
+			"min": 0,
+			"max": 100,
+			"default": 43
+		},
+		"p2_opacity": {
+			"name": "Player 2 ghost opacity (%)",
+			"type": "int",
+			"min": 0,
+			"max": 100,
+			"default": 43
+		}
 	}
 }

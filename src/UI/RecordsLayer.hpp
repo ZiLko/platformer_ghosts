@@ -4,9 +4,18 @@ class RecordCell : public CCNode {
 
 public:
 
-	static RecordCell* create(int rank) {
+    Replay replay;
+    int rank;
+
+    CCMenuItemToggler* raceToggle = nullptr;
+    CCMenuItemToggler* spectateToggle = nullptr;
+
+    geode::Popup<>* recordsLayer = nullptr;
+
+	static RecordCell* create(Replay replay, int rank, geode::Popup<>* layer) {
         RecordCell* ret = new RecordCell();
-        if (ret->init(rank)) {
+        if (ret->init(replay, rank)) {
+            ret->recordsLayer = layer;
             ret->autorelease();
             return ret;
         }
@@ -15,13 +24,23 @@ public:
         return nullptr;
     }
 
-	bool init(int rank);
+	bool init(Replay, int);
+
+    void disable(CCMenuItemToggler*);
+
+    void onRace(CCObject*);
+
+    void onSpectate(CCObject*);
 
 };
 
 class RecordsLayer: public geode::Popup<> {
 
 public:
+
+    std::vector<RecordCell*> cells;
+    RecordCell* selectedRace = nullptr;
+    RecordCell* selectedSpectate = nullptr;
 
     static RecordsLayer* create() {
         RecordsLayer* ret = new RecordsLayer();
@@ -39,5 +58,7 @@ public:
     void open(CCObject*);
 
     static void open();
+
+    static std::string getFormattedTime(float);
 
 };
