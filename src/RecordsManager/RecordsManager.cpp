@@ -178,9 +178,9 @@ std::vector<Action> RecordsManager::getCompletionActions(std::filesystem::path p
 }
 
 void RecordsManager::saveCompletion(std::filesystem::path folder, float time, std::vector<Action> actions) {
-    // auto now = std::chrono::system_clock::now();
-    // auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-    std::filesystem::path realFolder = folder / "lole";
+    auto now = std::chrono::system_clock::now();
+    auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    std::filesystem::path realFolder = folder / (fmt::format("{}_{}", std::to_string(time), std::to_string(timestamp)));
 	
     std::filesystem::create_directory(realFolder);
     std::filesystem::path infoPath = realFolder / "info.json";
@@ -190,12 +190,11 @@ void RecordsManager::saveCompletion(std::filesystem::path folder, float time, st
     std::string levelName = "";
     int levelId = 0;
 
-    // std::time_t rn = std::chrono::system_clock::to_time_t(now);
-    // std::tm* localTime = std::localtime(&rn);
-    // std::ostringstream oss;
-    // oss << std::put_time(localTime, "%Y-%m-%d");
-    // std::string date = oss.str();
-    std::string date = "xd";
+    std::time_t rn = std::chrono::system_clock::to_time_t(now);
+    std::tm* localTime = std::localtime(&rn);
+    std::ostringstream oss;
+    oss << std::put_time(localTime, "%Y-%m-%d");
+    std::string date = oss.str();
 
     if (PlayLayer* pl = PlayLayer::get()) {
         levelName = pl->m_level->m_levelName;
