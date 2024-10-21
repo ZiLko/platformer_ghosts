@@ -14,19 +14,19 @@ nlohmann::json RecordsManager::loadJSON(std::filesystem::path path) {
 
 std::string RecordsManager::getFormattedTime(float time) {
     std::string ret = "";
-    int hours = static_cast<int>(time / 3600);
-    time = std::fmod(time, 3600);
-    int minutes = static_cast<int>(time / 60);
-    time = std::fmod(time, 60);
-    int seconds = static_cast<int>(time);
-    int milliseconds = static_cast<int>((time - seconds) * 100);
+    // int hours = static_cast<int>(time / 3600);
+    // time = std::fmod(time, 3600);
+    // int minutes = static_cast<int>(time / 60);
+    // time = std::fmod(time, 60);
+    // int seconds = static_cast<int>(time);
+    // int milliseconds = static_cast<int>((time - seconds) * 100);
 
-    if (hours > 0)
-        ret = std::format("{:02}:{:02}:{:02}.{:02}", hours, minutes, seconds, milliseconds);
-    else if (minutes > 0)
-        ret = std::format("{:02}:{:02}.{:02}", minutes, seconds, milliseconds);
-    else
-        ret = std::format("{}.{:03}s", seconds, static_cast<int>((time - seconds) * 1000));
+    // if (hours > 0)
+    //     ret = std::format("{:02}:{:02}:{:02}.{:02}", hours, minutes, seconds, milliseconds);
+    // else if (minutes > 0)
+    //     ret = std::format("{:02}:{:02}.{:02}", minutes, seconds, milliseconds);
+    // else
+    //     ret = std::format("{}.{:03}s", seconds, static_cast<int>((time - seconds) * 1000));
 
     return ret;
 }
