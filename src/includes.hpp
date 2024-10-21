@@ -43,6 +43,11 @@ enum EffectType {
 	Complete = 3,
 };
 
+struct GhostLevel {
+    std::string name = "";
+    int id = 0;
+};
+
 struct InputData {
 	int button;
 	bool down;
@@ -105,14 +110,19 @@ struct PlayerColors {
 	bool glowEnabled = false;
 };
 
-struct Replay {
-	float time;
-	int levelId;
-	std::string username;
-	std::string levelName;
-	std::vector<Action> actions;
+struct ReplayInfo {
+	float time = 0.f;
+	int levelId = 0;
+	std::string username = "";
+	std::string levelName = "";
+	std::string date = "";
 	std::unordered_map<VehicleType, int> icons;
 	PlayerColors colors;
+};
+
+struct Replay {
+	ReplayInfo info;
+	std::vector<Action> actions;
 };
 
 const std::unordered_set<int> gamemodePortals = {12, 13, 47, 111, 660, 745, 1331, 1933};

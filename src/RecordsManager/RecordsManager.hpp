@@ -1,23 +1,23 @@
-#include "../includes.hpp"
+#include "../Includes.hpp"
 
 class RecordsManager {
 
 public: 
 
-    static RecordsManager& get();
-
     static nlohmann::json loadJSON(std::filesystem::path);
     static void handleCompletion(int, float, std::vector<Action>);
     static void saveCompletion(std::filesystem::path, float, std::vector<Action>);
+    static void deleteCompletion(std::filesystem::path);
 
-    static std::string getTypeString(ActionType);
-    static std::vector<Replay> getLevelCompletions(int);
+    static std::string getFormattedTime(float);
+    static std::vector<std::pair<ReplayInfo, std::filesystem::path>> getLevelCompletions(int);
+    static std::vector<GhostLevel> getSavedLevels();
     static Replay getBestCompletion(int);
     static std::vector<Action> getCompletionActions(std::filesystem::path);
     static std::unordered_map<VehicleType, int> getCompletionIcons(std::filesystem::path);
     static PlayerColors getCompletionColors(std::filesystem::path);
     static float getCompletionTime(std::filesystem::path);
-    static Replay getCompletionReplay(std::filesystem::path);
+    static ReplayInfo getCompletionInfo(std::filesystem::path);
 
     static void savePositionAction(cocos2d::CCPoint&, cocos2d::CCPoint&, float&, float&, nlohmann::json&, Action);
     static void saveVehicleAction(nlohmann::json&, Action);

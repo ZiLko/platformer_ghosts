@@ -17,8 +17,10 @@
     ],
 	"resources": {
 		"sprites": [
+			"resources/arrow.png",
+			"resources/raceGhost.png",
 			"resources/spectateGhost.png",
-			"resources/raceGhost.png"
+			"resources/spectateGhost2.png"
 		]
 	},
 	"settings": {
@@ -53,6 +55,37 @@
 			"min": 0,
 			"max": 100,
 			"default": 43
+		},
+		"no_colors": {
+			"name": "No Ghost Colors",
+			"description": "Makes ghosts white.",
+			"type": "bool",
+			"default": false
+		},
+		"no_time_difference": {
+			"name": "Disable Time Difference",
+			"description": "Disables the time difference shown in endscreen.",
+			"type": "bool",
+			"default": false
+		},
+		"off_screen_indicators": {
+			"name": "Off-screen indicators",
+			"description": "Displays the direction of ghosts when they are off-screen",
+			"type": "bool",
+			"default": true
+		},
+		"max_ghosts": {
+			"name": "Max Ghosts",
+			"description": "Maximum amount of ghosts that will be saved per level.",
+			"type": "int",
+			"default": 30,
+			"min": 1,
+			"max": 9999
+		},
+		"show_ui": {
+			"name": "Show Ghost Time",
+			"type": "bool",
+			"default": false
 		}
 	}
 }

@@ -1,4 +1,4 @@
-#include "../includes.hpp"
+#include "../Includes.hpp"
 
 class Recorder {
 
@@ -28,6 +28,8 @@ public:
 
     float prevRot1 = 0.f;
     float prevRot2 = 0.f;
+    float currentCompletionTime = 0.f;
+    float compareTime = 0.f;
 
     std::vector<Action> actions;
 

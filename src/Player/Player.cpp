@@ -13,6 +13,14 @@ bool Player::canClick() {
     return false;
 }
 
+bool Player::canUpdatePlayer() {
+    Player& p = get();
+    if (!p.isSpectating) return true;
+    if (!p.updatePlayer) return false;
+    p.updatePlayer = false;
+    return true;
+}
+
 std::vector<Action> Player::getActions() {
     return get().actions;
 }
@@ -20,9 +28,15 @@ std::vector<Action> Player::getActions() {
 void Player::clear() {
     Player& p = get();
     p.actions.clear();
+    p.player1 = nullptr;
+    p.player2 = nullptr;
+    p.icon1 = nullptr;
+    p.icon2 = nullptr;
 }
 
 void Player::setup(PlayLayer* pl) {
+    Player& p = get();
+
     for (int i = 1; i < 3; i++) {
         PlayerObject* realPlayer = i == 1 ? pl->m_player1 : pl->m_player2;
 		PlayerObject* player = PlayerObject::create(1, 1, pl, pl, true);
@@ -33,21 +47,200 @@ void Player::setup(PlayLayer* pl) {
         pl->m_objectLayer->addChild(player, realPlayer->getZOrder());
 
         if (i == 1)
-            get().player1 = player;
+            p.player1 = player;
         else
-            get().player2 = player;
+            p.player2 = player;
     }
 
-    get().p1Visible = pl->m_player1->isVisible();
+    p.icon1 = SimplePlayer::create(1);
+    p.icon2 = SimplePlayer::create(1);
+    p.icon1->setVisible(false);
+    p.icon2->setVisible(false);
+    p.icon1->setScale(0.5f);
+    p.icon2->setScale(0.5f);
+    p.icon1->setID("player-icon1"_spr);
+    p.icon2->setID("player-icon2"_spr);
+    pl->m_objectLayer->addChild(p.icon1, p.player1->getZOrder());
+    pl->m_objectLayer->addChild(p.icon2, p.player1->getZOrder());
 
-    Replay bestCompletion = RecordsManager::getBestCompletion(EditorIDs::getID(pl->m_level));
+    SimplePlayer* cube = SimplePlayer::create(1);
+    cube->setScale(0.6f);
+    cube->setPosition({6, 4});
+    cube->setID("cube"_spr);
+    p.icon1->addChild(cube);
+    cube = SimplePlayer::create(1);
+    cube->setScale(0.6f);
+    cube->setPosition({6, 4});
+    cube->setID("cube"_spr);
+    p.icon2->addChild(cube);
+    CCSprite* arrow = CCSprite::create("arrow.png"_spr);
+    arrow->setID("arrow"_spr);
+    p.icon1->addChild(arrow);
+    arrow = CCSprite::create("arrow.png"_spr);
+    arrow->setID("arrow"_spr);
+    p.icon2->addChild(arrow);
 
+    loadBestCompletion();
+}
+
+void Player::updateUI() {
+    PlayLayer* pl = PlayLayer::get();
+    if (!pl) return;
+    Player& p = get();
+
+    if (!Mod::get()->getSettingValue<bool>("show_ui") || p.actions.empty() || (!p.isRacing && !!p.isSpectating)) {
+        if (!p.uiIcon) return;
+        p.uiIcon->removeFromParentAndCleanup(true);
+        p.uiTime->removeFromParentAndCleanup(true);
+        p.uiName->removeFromParentAndCleanup(true);
+        p.uiIcon = nullptr;
+        p.uiTime = nullptr;
+        p.uiName = nullptr;
+        return;
+    } else if (!p.uiIcon) {
+        cocos2d::CCSize size = pl->getContentSize();
+        p.uiIcon = SimplePlayer::create(1);
+        p.uiIcon->setScale(0.7f);
+        p.uiIcon->setPosition({23, size.height - 23});
+        p.uiIcon->setID("ui-icon"_spr);
+        pl->addChild(p.uiIcon, 500);
+
+        p.uiTime = CCLabelBMFont::create("1.008s", "goldFont.fnt");
+        p.uiTime->setAnchorPoint({0, 0.5f});
+        p.uiTime->setPosition({39, size.height - 32});
+        p.uiTime->setScale(0.525f);
+        p.uiTime->setID("ui-time"_spr);
+        pl->addChild(p.uiTime, 500);
+
+        p.uiName = CCLabelBMFont::create("Zilko", "goldFont.fnt");
+        p.uiName->setAnchorPoint({0, 0.5f});
+        p.uiName->setScale(0.525f);
+        p.uiName->setPosition({39, size.height - 14});
+        p.uiName->setID("ui-name"_spr);
+        pl->addChild(p.uiName, 500);
+    }
+
+    PlayerColors colors = p.info.colors;
+    p.uiIcon->updatePlayerFrame(p.info.icons.at(VehicleType::Cube), IconType::Cube);
+    setPlayerIconColors(p.uiIcon, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    p.uiTime->setString(RecordsManager::getFormattedTime(p.info.time).c_str());
+    p.uiName->setString(p.info.username.c_str());
+}
+
+void Player::loadBestCompletion() {
+    Player& p = get();
+    Replay bestCompletion = RecordsManager::getBestCompletion(EditorIDs::getID(PlayLayer::get()->m_level));
     if (!bestCompletion.actions.empty()) {
-        Player& p = get();
         p.currentRace = 1;
         p.isRacing = true;
         p.loadReplay(bestCompletion);        
     }
+}
+
+void Player::updateDisabled() {
+    Player& p = get();
+    p.disabled = Mod::get()->getSettingValue<bool>("player_disabled");
+    if (!PlayLayer::get()) return;
+    if (p.disabled) {
+        if (p.player1) p.player1->setVisible(false);
+        if (p.player2) p.player2->setVisible(false);
+    }
+    else if (!p.actions.empty())
+        loadGhost({ p.info, p.actions }, p.currentRace);
+}
+
+void Player::updateOpacity(bool player2) {
+    Player& p = get();
+    PlayerObject* player = player2 ? p.player2 : p.player1;
+    if (!player) return;
+
+    int opacity = static_cast<int>(Mod::get()->getSettingValue<int64_t>(player2 ? "p2_opacity" : "p1_opacity") / 100.f * 255);
+    player->setOpacity(opacity);
+    player->m_spiderSprite->GJSpiderSprite::setOpacity(opacity);
+    player->m_robotSprite->GJRobotSprite::setOpacity(opacity);
+}
+
+void Player::updateColors() {
+    PlayerColors colors;
+    Player& p = get();
+
+    if (!Mod::get()->getSettingValue<bool>("no_colors"))
+        colors = p.info.colors;
+
+    setPlayerColors(p.player1, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    setPlayerColors(p.player2, true, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    setPlayerIconColors(p.icon1, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    setPlayerIconColors(p.icon2, true, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+
+    if (CCNode* cube = p.icon1->getChildByID("cube"_spr))
+        setPlayerIconColors(static_cast<SimplePlayer*>(cube), false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    if (CCNode* cube = p.icon2->getChildByID("cube"_spr))
+        setPlayerIconColors(static_cast<SimplePlayer*>(cube), true, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+}
+
+void Player::updateCamera() {
+    if (!PlayLayer::get()) return;
+    Player& p = get();
+    if (!p.icon1 || !p.icon2) return;
+
+    bool enabled = Mod::get()->getSettingValue<bool>("off_screen_indicators");
+    if (p.actions.empty() || p.ghostCompletedLevel || !enabled) {
+        p.icon1->setVisible(false);
+        p.icon2->setVisible(false);
+        return;
+    }
+
+    for (std::pair<PlayerObject*, SimplePlayer*> pair : {std::make_pair(p.player1, p.icon1), std::make_pair(p.player2, p.icon2)}) {
+        if (pair.first == p.player2 && !p.isDual) {
+            pair.second->setVisible(false);
+            continue;
+        }
+        cocos2d::CCPoint pos = pair.first->getPosition();
+        std::pair<bool, bool> visible = isInsideCamera(pos, 1.f);
+        pair.second->setVisible(!visible.first);
+        if (!visible.first) {
+            PlayerData data = getBorderPosition(pos, visible.second);
+            pair.second->setPosition(data.position);
+            pair.second->getChildByID("arrow"_spr)->setRotation(data.rotation);
+            pair.second->setScale(0.5f / PlayLayer::get()->m_gameState.m_cameraZoom);
+        }
+    }
+}
+
+PlayerData Player::getBorderPosition(cocos2d::CCPoint pos, bool isX) {
+    PlayLayer* pl = PlayLayer::get();
+    cocos2d::CCPoint offset = ccp(22, 22) * (pl->m_gameState.m_cameraZoom * pl->m_gameState.m_cameraZoom);
+    cocos2d::CCSize win = (CCDirector::sharedDirector()->getWinSize() - (offset * 2)) / pl->m_gameState.m_cameraZoom;
+    cocos2d::CCPoint cam = pl->m_gameState.m_cameraPosition + offset;
+    cocos2d::CCPoint center = cam + win / 2;
+
+    float a = abs(abs(center.x) - abs(pos.x));
+    float b = abs(abs(center.y) - abs(pos.y));
+    float m = b / a;
+    float x = cam.x + (pos.x > cam.x ? win.width : 0);
+    float y = m * (center.x - cam.x);
+    y = center.y + y * (pos.y > center.y ? 1 : -1);
+    
+    if (!isX || (isX && (y > cam.y + win.height || y < cam.y))) {
+        m = a / b;
+        x = m * (center.y - cam.y);
+        x = center.x + x * (pos.x > center.x ? 1 : -1);
+        y = cam.y + (pos.y > cam.y ? win.height : 0);
+    }
+
+    float rotation = -(std::atan2(pos.y - center.y, pos.x - center.x) * (180.0 / M_PI) - 90.f);
+    return {ccp(x , y), rotation, false};
+}
+
+std::pair<bool, bool> Player::isInsideCamera(cocos2d::CCPoint pos, float scale) {
+    PlayLayer* pl = PlayLayer::get();
+    cocos2d::CCSize win = CCDirector::sharedDirector()->getWinSize() / pl->m_gameState.m_cameraZoom;
+    cocos2d::CCPoint cam = pl->m_gameState.m_cameraPosition;
+    cocos2d::CCPoint posLeft = pos + ccp(32.5f, 32.5f) * scale;
+    cocos2d::CCPoint posRight = pos - ccp(32.5f, 32.5f) * scale;
+    bool isInside = posLeft > cam && posRight < cam + win;
+    bool isX = posLeft.x < cam.x || posRight.x > cam.x + win.width;
+    return std::make_pair(isInside, isX);
 }
 
 void Player::resetState() {
@@ -67,9 +260,13 @@ void Player::resetState() {
     p.lastRotation1 = 0.f;
     p.lastRotation2 = 0.f;
     p.completedLevel = false;
+    p.ghostCompletedLevel = false;
     p.spectatorInput = false;
+    p.updatePlayer = false;
+    p.spectated = false;
 
     if (p.actions.empty()) return;
+    if (!p.player1 || !p.player2) return;
 
     setPlayerSprite(p.player1, VehicleType::Cube);
     setPlayerSprite(p.player2, VehicleType::Cube);
@@ -93,10 +290,11 @@ void Player::resetState() {
 
 void Player::loadReplay(Replay replay) {
     actions = replay.actions;
-    icons = replay.icons;
-    PlayerColors colors = replay.colors;
-    setPlayerColors(player1, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
-    setPlayerColors(player2, true, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    icons = replay.info.icons;
+    PlayerColors colors = replay.info.colors;
+    info = replay.info;
+    updateColors();
+    updateUI();
 }
 
 void Player::loadGhost(Replay replay, int selected) {
@@ -166,17 +364,13 @@ void Player::handleActions() {
             pl->m_player1->setPosition(p.player1->getPosition());
             if (pl->m_gameState.m_isDualMode)
                 pl->m_player2->setPosition(p.player2->getPosition());
+
+            p.updatePlayer = true;
+            p.spectated = true;
         }
 
         p.currentAction++;
 	}
-
-    if (p.currentAction >= p.actions.size() && p.isSpectating) {
-        std::pair<cocos2d::CCPoint, cocos2d::CCPoint> pos = p.getLatestPositions();
-        PlayLayer::get()->m_player1->setPosition(pos.first);
-        PlayLayer::get()->m_player2->setPosition(pos.second);
-        stopSpectating();
-    }
 }
 
 void Player::handlePlaying(GJBaseGameLayer* bgl, int frame) {
@@ -184,7 +378,14 @@ void Player::handlePlaying(GJBaseGameLayer* bgl, int frame) {
     p.currentFrame = frame;
 
     if (!p.isRacing && !p.isSpectating) return;
-    if (p.actions.empty()) return;
+    if (p.actions.empty() || p.disabled) return;
+
+    if (p.isSpectating && frame == static_cast<int>(p.info.time * 240.f)) {
+        std::pair<cocos2d::CCPoint, cocos2d::CCPoint> pos = p.getLatestPositions();
+        PlayLayer::get()->m_player1->setPosition(pos.first);
+        PlayLayer::get()->m_player2->setPosition(pos.second);
+        stopSpectating();
+    }
 
     if (!p.player1 || !p.player2) {
 		p.player1 = static_cast<PlayerObject*>(bgl->m_objectLayer->getChildByID("ghost-player1"_spr));
@@ -211,6 +412,16 @@ void Player::startSpectating(Replay replay, int spectate) {
     p.loadReplay(replay);
 }
 
+void Player::stopRacing() {
+    Player& p = get();
+    Player::resetState();
+    if (p.player1) p.player1->setVisible(false);
+    p.actions.clear();
+    p.isRacing = false;
+    p.currentRace = 0;
+    updateUI();
+}
+
 void Player::stopSpectating() {
     Player& p = get();
     p.actions.clear();
@@ -221,13 +432,20 @@ void Player::stopSpectating() {
     p.isRacing = false;
     p.isSpectating = false;
     p.shouldRestart = true;
+
+    if (!p.player1 || !p.player2) return;
+
+    p.player1->setVisible(false);
+    p.player2->setVisible(false);
     PlayLayer::get()->m_player1->setVisible(true);
     PlayLayer::get()->m_player1->releaseAllButtons();
     PlayLayer::get()->m_player2->releaseAllButtons();
+    updateUI();
 }
 
 void Player::updateUpsideDownState() {
     Player& p = get();
+    if (!p.player1 || !p.player2) return;
 
     if (p.upsideDown1 && !nonInvertedVehicles.contains(p.currentVehicle1))
         p.player1->setScaleY(-1 * abs(p.player1->getScaleY()));
@@ -242,7 +460,6 @@ void Player::updateUpsideDownState() {
 
 void Player::setPlayerColors(PlayerObject* player, bool player2, int color1ID, int color2ID, int glowColorID, bool glowEnabled) {
     GameManager* gm = GameManager::get();
-
     cocos2d::ccColor3B color1 = gm->colorForIdx(color1ID);
     cocos2d::ccColor3B color2 = gm->colorForIdx(color2ID);
 
@@ -263,6 +480,25 @@ void Player::setPlayerColors(PlayerObject* player, bool player2, int color1ID, i
 
     player->updateGlowColor();
     player->updatePlayerGlow();
+}
+
+void Player::setPlayerIconColors(SimplePlayer* icon, bool player2, int color1ID, int color2ID, int glowColorID, bool glowEnabled) {
+    GameManager* gm = GameManager::get();
+    cocos2d::ccColor3B color1 = gm->colorForIdx(color1ID);
+    cocos2d::ccColor3B color2 = gm->colorForIdx(color2ID);
+    if (player2) {
+        cocos2d::ccColor3B tempColor = color1;
+        color1 = color2;
+        color2 = tempColor;
+    }
+    icon->setColor(color1);
+    icon->setSecondColor(color2);
+    icon->m_hasGlowOutline = glowEnabled;
+    if (icon->m_hasGlowOutline)
+        icon->enableCustomGlowColor(gm->colorForIdx(glowColorID));
+    else
+        icon->disableCustomGlowColor();
+    icon->updateColors();
 }
 
 void Player::setPlayerSprite(PlayerObject* player, VehicleType vehicle) {
@@ -290,12 +526,34 @@ void Player::setPlayerSprite(PlayerObject* player, VehicleType vehicle) {
         case VehicleType::Swing: player->toggleSwingMode(true, false), player->updatePlayerSwingFrame(id); break;
     }
 
-    int opacity = static_cast<int>(player == get().player1 ? Mod::get()->getSettingValue<int64_t>("p1_opacity") / 100.f * 255
-    : Mod::get()->getSettingValue<int64_t>("p1_opacity") / 100.f * 255);
+    IconType iconType = IconType::Cube;
+    SimplePlayer* icon = player == get().player2 ? get().icon2 : get().icon1;
+    if (!icon) return;
+    switch (vehicle) {
+        case VehicleType::Ship: iconType = IconType::Jetpack; break;
+        case VehicleType::Ball: iconType = IconType::Ball; break;
+        case VehicleType::Ufo: iconType = IconType::Ufo; break;
+        case VehicleType::Wave: iconType = IconType::Wave; break;
+        case VehicleType::Robot: iconType = IconType::Robot; break;
+        case VehicleType::Spider: iconType = IconType::Spider; break;
+        case VehicleType::Swing: iconType = IconType::Swing; break;
+    }
 
-    player->setOpacity(opacity);
-    player->m_spiderSprite->GJRobotSprite::setOpacity(opacity);
-    player->m_robotSprite->GJRobotSprite::setOpacity(opacity);
+    if (CCNode* cube = icon->getChildByID("cube"_spr)) {
+        static_cast<SimplePlayer*>(cube)->setVisible(iconType == IconType::Jetpack);
+        static_cast<SimplePlayer*>(cube)->setOpacity(220);
+        static_cast<SimplePlayer*>(cube)->updatePlayerFrame(get().icons.at(VehicleType::Cube), IconType::Cube);
+    }
+
+    icon->updatePlayerFrame(id, iconType);
+    if (iconType == IconType::Robot)
+        icon->m_robotSprite->GJRobotSprite::setOpacity(220);
+    else if (iconType == IconType::Spider)
+        icon->m_spiderSprite->GJSpiderSprite::setOpacity(220);
+    else
+        icon->setOpacity(220);
+
+    updateOpacity(player == get().player2);
 }
 
 void Player::setPlayerScale(PlayerObject* player, float scale, float x, float y) {
@@ -308,8 +566,13 @@ void Player::setPlayerScale(PlayerObject* player, float scale, float x, float y)
 
 void Player::playCompleteEffect() {
     Player& p = get();
+    
+    if (!p.player1 || !p.player2) return;
+
     if (p.player1->isVisible()) p.player1->playCompleteEffect(false, false);
     if (p.player2->isVisible()) p.player2->playCompleteEffect(false, false);
+    p.player1->setVisible(false);
+    p.player2->setVisible(false);
 }
 
 void Player::handleCompletion() {
@@ -351,6 +614,8 @@ void Player::handlePositionAction(Action action) {
         } else
 			player2->setRotation(lastRotation2 + rotationOffset2);
     }
+
+    Player::updateCamera();
 }
 
 void Player::handleVehicleAction(Action action) {
@@ -448,10 +713,17 @@ void Player::handleEffectAction(Action action) {
     switch(data.effect) {
         case EffectType::Death: player->playDeathEffect(); break;
         case EffectType::Respawn: player->playSpawnEffect(); player->setOpacity(110); break;
-        case EffectType::Complete: 
+        case EffectType::Complete: {
             if (!player->isVisible()) break;
             player->playCompleteEffect(false, false); 
+
+            Player& p = get();
+            p.ghostCompletedLevel = true;
+            if (p.icon1) p.icon1->setVisible(false);
+            if (p.icon2) p.icon2->setVisible(false);
+            
             break;
+        }
     }
 }
 
@@ -466,4 +738,5 @@ void Player::handleInputAction(Action action) {
     PlayerButton btn = static_cast<PlayerButton>(data.button);
 
     data.down ? player->pushButton(btn) : player->releaseButton(btn);
+    get().updatePlayer = true;
 }

@@ -7,11 +7,13 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 project(PlatformerGhost VERSION 1.0.0)
 
 add_library(${PROJECT_NAME} SHARED
-    src/main.cpp
+    src/Main.cpp
     src/Player/Player.cpp
     src/Recorder/Recorder.cpp
     src/RecordsManager/RecordsManager.cpp
     src/UI/RecordsLayer.cpp
+    src/UI/ManagerLayer.cpp
+    src/UI/ListLayer.cpp
 )
 
 if (NOT DEFINED ENV{GEODE_SDK})

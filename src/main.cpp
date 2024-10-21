@@ -1,41 +1,44 @@
 #include "RecordsManager/RecordsManager.hpp"
 #include "Recorder/Recorder.hpp"
 #include "UI/RecordsLayer.hpp"
+#include "UI/ManagerLayer.hpp"
 #include "Player/Player.hpp"
 
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
-#include <Geode/modify/CCKeyboardDispatcher.hpp>
+#include <Geode/modify/EndLevelLayer.hpp>
 
 $execute {
     geode::listenForSettingChanges("smoothness", +[](int64_t value) {
         Recorder::get().fps = value;
     });
+    geode::listenForSettingChanges("p1_opacity", +[](int64_t value) {
+        Player::updateOpacity(false);
+    });
+    geode::listenForSettingChanges("p2_opacity", +[](int64_t value) {
+        Player::updateOpacity(true);
+    });
+    geode::listenForSettingChanges("no_colors", +[](bool value) {
+        Player::updateColors();
+    });
     geode::listenForSettingChanges("player_disabled", +[](bool value) {
-        Player::get().disabled = value;
+        Player::updateDisabled();
     });
     geode::listenForSettingChanges("recorder_disabled", +[](bool value) {
         Recorder::get().disabled = value;
+    });
+    geode::listenForSettingChanges("show_ui", +[](bool value) {
+        Player::updateUI();
+    });
+    geode::listenForSettingChanges("off_screen_indicators", +[](bool value) {
+        Player::updateCamera();
     });
 
     Player::get().disabled = Mod::get()->getSettingValue<bool>("player_disabled");
     Recorder::get().disabled = Mod::get()->getSettingValue<bool>("recorder_disabled");
     Recorder::get().fps = Mod::get()->getSettingValue<int64_t>("smoothness");
-
-};
-
-class $modify(CCKeyboardDispatcher) {
-
-    bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool down, bool repeat) {
-        if (key == cocos2d::enumKeyCodes::KEY_J && down) {
-            RecordsLayer::open();
-        }
-
-        return CCKeyboardDispatcher::dispatchKeyboardMSG(key, down, repeat);
-    }
-
 };
 
 bool shouldReturn(PlayLayer* pl) {
@@ -49,7 +52,8 @@ bool shouldReturn(GJBaseGameLayer* pl) {
 class $modify(GameLayer, GJBaseGameLayer) {
 
 	struct Fields {
-		unsigned int totalFrame = 0;
+		int totalFrame = 0;
+        int previousFrame = 0;
         bool levelComplete = false;
 	};
 
@@ -80,7 +84,11 @@ class $modify(GameLayer, GJBaseGameLayer) {
             m_fields->totalFrame = 0;
         }
 
-		m_fields->totalFrame++;
+        int attemptFrame = static_cast<int>(pl->m_gameState.m_levelTime * 240.0);
+        if (!m_levelEndAnimationStarted && (m_fields->previousFrame == 0 || m_fields->previousFrame != attemptFrame))
+            m_fields->totalFrame++;
+
+        m_fields->previousFrame = attemptFrame;
 
         if (Player::get().isSpectating && m_levelEndAnimationStarted)
             Player::handleCompletion();
@@ -116,6 +124,11 @@ class $modify(GameLayer, GJBaseGameLayer) {
 };
 
 class $modify(PlayerObject) {
+
+    void update(float dt) {
+        if (Player::canUpdatePlayer())
+            PlayerObject::update(dt);
+    }
 
     bool shouldReturnPlayer() {
         PlayLayer* pl = PlayLayer::get();
@@ -193,6 +206,11 @@ class $modify(PlayerObject) {
             Recorder::get().jumped1 = true;
     }
 
+    void activateStreak() {
+        if (!Player::get().isSpectating)
+            PlayerObject::activateStreak();
+    }
+
 };
 
 class $modify(PlayLayer) {
@@ -200,19 +218,32 @@ class $modify(PlayLayer) {
 	void setupHasCompleted() {
 		PlayLayer::setupHasCompleted();
         Player::clear();
-        Player::setup(this);
+
+        if (!m_levelSettings->m_platformerMode) return;
+
+        Loader::get()->queueInMainThread([this] {
+            Player::setup(this);
+        });
 	}
 
 	void levelComplete() {
 		PlayLayer::levelComplete();
+        Recorder& r = Recorder::get();
+        Player& p = Player::get();
 
-		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || Player::get().isSpectating) return;
+        if (p.icon1) p.icon1->setVisible(false);
+        if (p.icon2) p.icon2->setVisible(false);
 
-        auto& fields = static_cast<GameLayer*>(m_player1->m_gameLayer)->m_fields;
-		float completionTime = fields->totalFrame / 240.f; 
-		int levelId = EditorIDs::getID(m_level);
+        r.currentCompletionTime = 0.f;
+        r.compareTime = p.info.time;
+        if (!p.isRacing)
+            r.compareTime = RecordsManager::getBestCompletion(EditorIDs::getID(PlayLayer::get()->m_level)).info.time;
 
-		RecordsManager::handleCompletion(levelId, completionTime, Recorder::getActions());
+		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || p.spectated) return;
+        float time = static_cast<GameLayer*>(m_player1->m_gameLayer)->m_fields->totalFrame / 240.f;
+        r.currentCompletionTime = time;
+        if (r.compareTime == 0.f) r.compareTime = time * 2;
+		RecordsManager::handleCompletion(EditorIDs::getID(m_level), time, Recorder::getActions());
 	}
 
     void resetLevel() {
@@ -295,4 +326,53 @@ class $modify(PauseLayer) {
             pl->resetLevelFromStart();
         });
     }
+};
+
+class $modify(EndLevelLayer) {
+    
+    void customSetup() {
+        EndLevelLayer::customSetup();
+        if (Mod::get()->getSettingValue<bool>("no_time_difference")) return;
+
+        float time = Recorder::get().currentCompletionTime;
+        if (time == 0.f || Player::get().spectated) return;
+
+        float timeDifference = Recorder::get().compareTime - time;
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(abs(timeDifference) >= 0.01 ? 2 : 3) << abs(timeDifference);
+        std::string timeString = oss.str() + "s";
+        timeString = (timeDifference < 0 ? "+" : "-") + timeString;
+
+        CCLabelBMFont* timeLabel = nullptr;
+        if (Loader::get()->isModLoaded("geode.node-ids"))
+            timeLabel = static_cast<CCLabelBMFont*>(m_mainLayer->getChildByID("time-label"));
+        else {
+            for (CCNode* child : CCArrayExt<CCNode*>(m_mainLayer->getChildren())) {
+                CCLabelBMFont* lbl = typeinfo_cast<CCLabelBMFont*>(child);
+                if (!lbl) continue;
+                std::string_view str = lbl->getString();
+                if (!str.starts_with("Time")) continue;
+                timeLabel = lbl;
+                break;
+            }
+        }
+        if (!timeLabel) return;
+
+        cocos2d::ccColor3B color = timeDifference < 0 ? ccc3(255, 29, 29) : ccc3(106, 255, 29);
+        if (timeDifference < 0.001f) {
+            color = ccc3(255, 127, 29);
+            timeString = "Tied";
+        }
+
+        CCLabelBMFont* lbl = CCLabelBMFont::create(fmt::format("({})", timeString).c_str(), "bigFont.fnt");
+        lbl->setAnchorPoint({0, 0.5f});
+        lbl->setID("time-difference"_spr);
+        lbl->setScale(0.4f);
+        lbl->setPositionY(timeLabel->getPositionY() - 2);
+        lbl->setPositionX((timeLabel->getContentSize().width / 2.f) * timeLabel->getScale() + timeLabel->getPositionX());
+        lbl->setColor(color);
+        m_mainLayer->addChild(lbl);
+
+    }
+    
 };

@@ -1,10 +1,11 @@
-#include "../includes.hpp"
+#include "../Includes.hpp"
 
 class RecordCell : public CCNode {
 
 public:
 
-    Replay replay;
+    ReplayInfo info;
+    std::filesystem::path path;
     int rank;
 
     CCMenuItemToggler* raceToggle = nullptr;
@@ -12,9 +13,9 @@ public:
 
     geode::Popup<>* recordsLayer = nullptr;
 
-	static RecordCell* create(Replay replay, int rank, geode::Popup<>* layer) {
+	static RecordCell* create(std::pair<ReplayInfo, std::filesystem::path> replay, int rank, geode::Popup<>* layer, bool xd = false) {
         RecordCell* ret = new RecordCell();
-        if (ret->init(replay, rank)) {
+        if (ret->init(replay, rank, xd)) {
             ret->recordsLayer = layer;
             ret->autorelease();
             return ret;
@@ -24,9 +25,7 @@ public:
         return nullptr;
     }
 
-	bool init(Replay, int);
-
-    void disable(CCMenuItemToggler*);
+	bool init(std::pair<ReplayInfo, std::filesystem::path>, int, bool);
 
     void onRace(CCObject*);
 
@@ -41,10 +40,11 @@ public:
     std::vector<RecordCell*> cells;
     RecordCell* selectedRace = nullptr;
     RecordCell* selectedSpectate = nullptr;
+    CCLabelBMFont* noGhostsLabel = nullptr;
 
     static RecordsLayer* create() {
         RecordsLayer* ret = new RecordsLayer();
-        if (ret->init(302, 212, "GJ_square02.png")) {
+        if (ret->init(315, 270, "GJ_square02.png")) {
             ret->autorelease();
             return ret;
         }
@@ -54,11 +54,12 @@ public:
     }
 
     bool setup() override;
-
-    void open(CCObject*);
+    void addList();
+    void refresh();
 
     static void open();
-
-    static std::string getFormattedTime(float);
+    void open(CCObject*);
+    void onSettings(CCObject*);
+    void onManager(CCObject*);
 
 };

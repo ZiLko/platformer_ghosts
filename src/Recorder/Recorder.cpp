@@ -26,12 +26,13 @@ void Recorder::resetState(bool shouldRecord) {
     r.falling2 = false;
     r.jumped1 = false;
     r.jumped2 = false;
+    r.currentCompletionTime = 0.f;
+    r.compareTime = 0.f;
     r.actions.clear();
 
     if (!shouldRecord) return;
 
     PlayLayer* pl = PlayLayer::get();
-
     if (!pl) return;
 
     r.upsideDown1 = pl->m_player1->m_isUpsideDown;
@@ -40,7 +41,6 @@ void Recorder::resetState(bool shouldRecord) {
     r.goingLeft2 = pl->m_player2->m_isGoingLeft;
 
     recordDualAction(pl->m_gameState.m_isDualMode, 1);
-
     for (int i = 0; i < 2; i++) {
         bool player2 = i == 1;
         PlayerObject* player = player2 ? pl-> m_player2 : pl->m_player1;
@@ -52,14 +52,15 @@ void Recorder::resetState(bool shouldRecord) {
 
 void Recorder::handleRecording(PlayLayer* pl, int frame) {
     if (Player::get().isSpectating) return;
+    
     Recorder& r = get();
+    if (r.disabled) return;
 
     int m = static_cast<int>(240.f / r.fps);
     if (frame % m != 0) return;
 
     PlayerObject* p1 = pl->m_player1;  
     PlayerObject* p2 = pl->m_player2;
-
     cocos2d::CCPoint pos1 = p1->getPosition();
     cocos2d::CCPoint pos2 = p2->getPosition();
     float rot1 = p1->getRotation();

@@ -1,9 +1,5 @@
 #include "RecordsManager.hpp"
-
-RecordsManager& RecordsManager::get() {
-    static RecordsManager instance;
-    return instance;
-}
+#include "../Player/Player.hpp"
 
 nlohmann::json RecordsManager::loadJSON(std::filesystem::path path) {
     std::ifstream jsonFile(path);
@@ -13,48 +9,98 @@ nlohmann::json RecordsManager::loadJSON(std::filesystem::path path) {
         return json;
 
     jsonFile >> json;
-
     return json;
 }
 
-std::vector<Replay> RecordsManager::getLevelCompletions(int levelId) {
-    std::vector<Replay> ret;
+std::string RecordsManager::getFormattedTime(float time) {
+    std::string ret = "";
+    int hours = static_cast<int>(time / 3600);
+    time = std::fmod(time, 3600);
+    int minutes = static_cast<int>(time / 60);
+    time = std::fmod(time, 60);
+    int seconds = static_cast<int>(time);
+    int milliseconds = static_cast<int>((time - seconds) * 100);
+
+    if (hours > 0)
+        ret = std::format("{:02}:{:02}:{:02}.{:02}", hours, minutes, seconds, milliseconds);
+    else if (minutes > 0)
+        ret = std::format("{:02}:{:02}.{:02}", minutes, seconds, milliseconds);
+    else
+        ret = std::format("{}.{:03}s", seconds, static_cast<int>((time - seconds) * 1000));
+
+    return ret;
+}
+
+std::vector<std::pair<ReplayInfo, std::filesystem::path>> RecordsManager::getLevelCompletions(int levelId) {
+    std::vector<std::pair<ReplayInfo, std::filesystem::path>> ret;
 
     std::filesystem::path levelFolder = Mod::get()->getSaveDir() / std::to_string(levelId);
 	if (!std::filesystem::exists(levelFolder)) return ret;
 
-    std::vector<std::filesystem::path> replays = file::readDirectory(levelFolder).value();
+    for (const auto& dir : std::filesystem::directory_iterator(levelFolder)) {
+        if (!std::filesystem::is_directory(dir.path())) continue;
 
-    for (std::filesystem::path path : replays) {
-        Replay replay = getCompletionReplay(path);
-        ret.push_back(replay);
+        std::filesystem::path info = dir.path() / "info.json";
+        if (!std::filesystem::exists(info)) continue;
+        std::filesystem::path actions = dir.path() / "actions.json";
+        if (!std::filesystem::exists(actions)) continue;
+
+        ret.push_back(std::make_pair(getCompletionInfo(info), actions));
     }
     
-    std::sort(ret.begin(), ret.end(), [](Replay a, Replay b) {
-        return a.time < b.time;
+    std::sort(ret.begin(), ret.end(), [](std::pair<ReplayInfo, std::filesystem::path> a, std::pair<ReplayInfo, std::filesystem::path> b) {
+        return a.first.time < b.first.time;
     });
 
     return ret;
 }
 
-void RecordsManager::handleCompletion(int levelId, float completionTime, std::vector<Action> actions) {		
-    std::filesystem::path levelFolder = Mod::get()->getSaveDir() / std::to_string(levelId);
+std::vector<GhostLevel> RecordsManager::getSavedLevels() {
+    std::vector<GhostLevel> ret;
 
-	if (!std::filesystem::exists(levelFolder)) {
-		std::filesystem::create_directory(levelFolder);
-        return saveCompletion(levelFolder, completionTime, actions);
+    for (const auto& dir : std::filesystem::directory_iterator(Mod::get()->getSaveDir())) {
+        std::filesystem::path path = dir.path();
+        GhostLevel level;
+        if (!path.extension().string().empty()) continue;
+
+        for (const auto& dir2 : std::filesystem::directory_iterator(path)) {
+            std::filesystem::path path2 = dir2.path();
+            if (!std::filesystem::exists(path2 / "info.json")) continue;
+            ReplayInfo info = getCompletionInfo(path2 / "info.json");
+            level.name = info.levelName;
+            level.id = info.levelId;
+            break;
+        }
+
+        if (level.id != 0) ret.push_back(level);
     }
 
-    // std::filesystem::path bestCompletion = getBestCompletion(levelId);
-    // float bestTime = getCompletionTime(bestCompletion);
+    return ret;
+}
 
-    // if (completionTime < bestTime || bestTime == 0.f) {
+void RecordsManager::handleCompletion(int levelId, float time, std::vector<Action> actions) {		
+    std::filesystem::path levelFolder = Mod::get()->getSaveDir() / std::to_string(levelId);
 
-    //     if (!bestCompletion.empty())
-    //         std::filesystem::remove(bestCompletion);
+	if (!std::filesystem::exists(levelFolder))
+		std::filesystem::create_directory(levelFolder);
 
-        saveCompletion(levelFolder, completionTime, actions);
-    // }
+    saveCompletion(levelFolder, time, actions);
+    Player& p = Player::get();
+    if (p.currentRace == 1 || p.currentRace == 0)
+        Player::loadBestCompletion();
+    else if (time < p.info.time) p.currentRace++;
+
+    std::vector<std::pair<ReplayInfo, std::filesystem::path>> ghosts = getLevelCompletions(levelId);
+    if (ghosts.empty()) return;
+
+    if (ghosts.size() > Mod::get()->getSettingValue<int64_t>("max_ghosts")) {
+		std::filesystem::remove_all(ghosts.back().second.parent_path());
+        ghosts.pop_back();
+        if (p.currentRace == ghosts.size()) {
+            p.isRacing = true;
+            p.loadReplay({ ghosts.back().first, getCompletionActions(ghosts.back().second) }); 
+        }
+    }
 }
 
 float RecordsManager::getCompletionTime(std::filesystem::path path) {
@@ -70,28 +116,35 @@ float RecordsManager::getCompletionTime(std::filesystem::path path) {
 }
 
 Replay RecordsManager::getBestCompletion(int levelId) {
-    std::vector<Replay> replays = getLevelCompletions(levelId);
+    std::vector<std::pair<ReplayInfo, std::filesystem::path>> replays = getLevelCompletions(levelId);
     Replay replay;
     if (replays.empty()) return replay;
-    return replays[0];
+    std::string username = GJAccountManager::sharedState()->m_username;
+    for (std::pair<ReplayInfo, std::filesystem::path> r : replays) {
+        if (r.first.username == username) {
+            replay.info = r.first;
+            replay.actions = getCompletionActions(r.second);
+            break;
+        }
+    }
+    return replay;
 }
 
-Replay RecordsManager::getCompletionReplay(std::filesystem::path path) {
-    Replay replay;
+ReplayInfo RecordsManager::getCompletionInfo(std::filesystem::path path) {
+    ReplayInfo info;
 
     nlohmann::json json = loadJSON(path);
-    if (json.empty()) return replay;
+    if (json.empty()) return info;
 
-    replay.actions = getCompletionActions(path);
-    replay.colors = getCompletionColors(path);
-    replay.icons = getCompletionIcons(path);
+    info.colors = getCompletionColors(path);
+    info.icons = getCompletionIcons(path);
+    info.levelName = json["level_name"].get<std::string>();
+    info.username = json["username"].get<std::string>();
+    info.date = json["date"].get<std::string>();
+    info.levelId = json["level_id"].get<int>();
+    info.time = json["time"].get<float>();
 
-    replay.levelName = json["level_name"].get<std::string>();
-    replay.username = json["username"].get<std::string>();
-    replay.levelId = json["level_id"].get<int>();
-    replay.time = json["time"].get<float>();
-
-    return replay;
+    return info;
 }
 
 std::vector<Action> RecordsManager::getCompletionActions(std::filesystem::path path) {
@@ -127,39 +180,57 @@ std::vector<Action> RecordsManager::getCompletionActions(std::filesystem::path p
 void RecordsManager::saveCompletion(std::filesystem::path folder, float time, std::vector<Action> actions) {
     auto now = std::chrono::system_clock::now();
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-
-    std::filesystem::path path = folder / (std::to_string(timestamp) + ".json");
+    std::filesystem::path realFolder = folder / (fmt::format("{}_{}", std::to_string(time), std::to_string(timestamp)));
+	
+    std::filesystem::create_directory(realFolder);
+    std::filesystem::path infoPath = realFolder / "info.json";
+    std::filesystem::path actionsPath = realFolder / "actions.json";
 
     std::string username = GJAccountManager::sharedState()->m_username;
     std::string levelName = "";
     int levelId = 0;
+
+    std::time_t rn = std::chrono::system_clock::to_time_t(now);
+    std::tm* localTime = std::localtime(&rn);
+    std::ostringstream oss;
+    oss << std::put_time(localTime, "%Y-%m-%d");
+    std::string date = oss.str();
 
     if (PlayLayer* pl = PlayLayer::get()) {
         levelName = pl->m_level->m_levelName;
         levelId = EditorIDs::getID(pl->m_level);
     }
 
-    nlohmann::json json;
-    json["username"] = username;
-    json["time"] = time;
-    json["level_name"] = levelName;
-    json["level_id"] = levelId;
+    nlohmann::json infoJson;
+    nlohmann::json actionsJson;
+
+    infoJson["date"] = date;
+    infoJson["username"] = username;
+    infoJson["time"] = time;
+    infoJson["level_name"] = levelName;
+    infoJson["level_id"] = levelId;
 
     GameManager* gm = GameManager::get();
 
-    json["colors"]["color1"] = gm->getPlayerColor();
-    json["colors"]["color2"] = gm->getPlayerColor2();
-    json["colors"]["glow_color"] = gm->getPlayerGlowColor();
-    json["colors"]["glow_enabled"] = gm->getPlayerGlow();
+    infoJson["colors"]["color1"] = gm->getPlayerColor();
+    infoJson["colors"]["color2"] = gm->getPlayerColor2();
+    infoJson["colors"]["glow_color"] = gm->getPlayerGlowColor();
+    infoJson["colors"]["glow_enabled"] = gm->getPlayerGlow();
 
-    json["icons"]["cube"] = gm->getPlayerFrame();
-    json["icons"]["ship"] = gm->getPlayerJetpack();
-    json["icons"]["ball"] = gm->getPlayerBall();
-    json["icons"]["ufo"] = gm->getPlayerBird();
-    json["icons"]["wave"] = gm->getPlayerDart();
-    json["icons"]["robot"] = gm->getPlayerRobot();
-    json["icons"]["spider"] = gm->getPlayerSpider();
-    json["icons"]["swing"] = gm->getPlayerSwing();
+    infoJson["icons"]["cube"] = gm->getPlayerFrame();
+    infoJson["icons"]["ship"] = gm->getPlayerJetpack();
+    infoJson["icons"]["ball"] = gm->getPlayerBall();
+    infoJson["icons"]["ufo"] = gm->getPlayerBird();
+    infoJson["icons"]["wave"] = gm->getPlayerDart();
+    infoJson["icons"]["robot"] = gm->getPlayerRobot();
+    infoJson["icons"]["spider"] = gm->getPlayerSpider();
+    infoJson["icons"]["swing"] = gm->getPlayerSwing();
+
+    std::ofstream infoFile(infoPath);
+    if (infoFile.is_open()) {
+        infoFile << infoJson.dump();
+        infoFile.close();
+    }
 
     cocos2d::CCPoint prev1 = ccp(0, 0);
     cocos2d::CCPoint prev2 = ccp(0, 0);
@@ -184,13 +255,13 @@ void RecordsManager::saveCompletion(std::filesystem::path folder, float time, st
             case ActionType::Dual: actionJson["d"] = std::get<bool>(action.data); break;
         }
 
-        json["actions"].push_back(actionJson);
+        actionsJson["actions"].push_back(actionJson);
     }
-    
-    std::ofstream jsonFile(path);
-    if (jsonFile.is_open()) {
-        jsonFile << json.dump(4);
-        jsonFile.close();
+
+    std::ofstream actionsFile(actionsPath);
+    if (actionsFile.is_open()) {
+        actionsFile << actionsJson.dump();
+        actionsFile.close();
     }
 }
 
@@ -269,7 +340,7 @@ void RecordsManager::saveFlipAction(nlohmann::json& json, Action action) {
 
 void RecordsManager::saveMiniAction(nlohmann::json& json, Action action) {
     MiniData data = std::get<MiniData>(action.data);
-    json["d"]["mini"] = data.mini;
+    json["d"]["m"] = data.mini;
     json["d"]["p2"] = data.player2;
 }
 
@@ -288,7 +359,7 @@ void RecordsManager::saveAnimationAction(nlohmann::json& json, Action action) {
 
 void RecordsManager::saveEffectAction(nlohmann::json& json, Action action) {
     EffectData data = std::get<EffectData>(action.data);
-    json["d"]["effect"] = static_cast<int>(data.effect);
+    json["d"]["e"] = static_cast<int>(data.effect);
     json["d"]["p2"] = data.player2;
 }
 
@@ -339,7 +410,7 @@ void RecordsManager::loadFlipAction(Action& action, nlohmann::json json) {
 
 void RecordsManager::loadMiniAction(Action& action, nlohmann::json json) {
     MiniData data;
-    data.mini = json["d"]["mini"].get<bool>();
+    data.mini = json["d"]["m"].get<bool>();
     data.player2 = json["d"]["p2"].get<bool>();
     action.data = data;
 }
@@ -361,7 +432,7 @@ void RecordsManager::loadAnimationAction(Action& action, nlohmann::json json) {
 
 void RecordsManager::loadEffectAction(Action& action, nlohmann::json json) {
     EffectData data;
-    data.effect = static_cast<EffectType>(json["d"]["effect"].get<int>());
+    data.effect = static_cast<EffectType>(json["d"]["e"].get<int>());
     data.player2 = json["d"]["p2"].get<bool>();
     action.data = data;
 }
