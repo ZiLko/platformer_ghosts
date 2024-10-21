@@ -190,11 +190,12 @@ void RecordsManager::saveCompletion(std::filesystem::path folder, float time, st
     std::string levelName = "";
     int levelId = 0;
 
-    std::time_t rn = std::chrono::system_clock::to_time_t(now);
-    std::tm* localTime = std::localtime(&rn);
-    std::ostringstream oss;
-    oss << std::put_time(localTime, "%Y-%m-%d");
-    std::string date = oss.str();
+    // std::time_t rn = std::chrono::system_clock::to_time_t(now);
+    // std::tm* localTime = std::localtime(&rn);
+    // std::ostringstream oss;
+    // oss << std::put_time(localTime, "%Y-%m-%d");
+    // std::string date = oss.str();
+    std::string date = "xd";
 
     if (PlayLayer* pl = PlayLayer::get()) {
         levelName = pl->m_level->m_levelName;
