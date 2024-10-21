@@ -180,7 +180,7 @@ std::vector<Action> RecordsManager::getCompletionActions(std::filesystem::path p
 void RecordsManager::saveCompletion(std::filesystem::path folder, float time, std::vector<Action> actions) {
     // auto now = std::chrono::system_clock::now();
     // auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-    std::filesystem::path realFolder = folder / (fmt::format("{}_{}", std::to_string(time), std::to_string(2)));
+    std::filesystem::path realFolder = folder / "lole";
 	
     std::filesystem::create_directory(realFolder);
     std::filesystem::path infoPath = realFolder / "info.json";

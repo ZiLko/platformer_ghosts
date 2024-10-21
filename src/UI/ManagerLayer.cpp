@@ -262,7 +262,7 @@ void ManagerLayer::addList(bool refresh, float prevScroll) {
 		cells->addObject(cell);
 	}
 
-	ghostCountLabel->setString(fmt::format("{} Ghosts", std::to_string(cells->count())).c_str());
+	ghostCountLabel->setString((std::to_string(cells->count()) + " Ghosts").c_str());
 
 	if (cells->count() == 0) {
 		CCLabelBMFont* lbl = CCLabelBMFont::create("No Ghosts", "bigFont.fnt");

@@ -364,7 +364,7 @@ class $modify(EndLevelLayer) {
             timeString = "Tied";
         }
 
-        CCLabelBMFont* lbl = CCLabelBMFont::create(fmt::format("({})", timeString).c_str(), "bigFont.fnt");
+        CCLabelBMFont* lbl = CCLabelBMFont::create(("(" + timeString + ")").c_str(), "bigFont.fnt");
         lbl->setAnchorPoint({0, 0.5f});
         lbl->setID("time-difference"_spr);
         lbl->setScale(0.4f);

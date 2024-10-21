@@ -67,7 +67,7 @@ bool LevelSelectCell::init(GhostLevel level) {
     lbl->limitLabelWidth(180.5f, 0.725f, 0.01f);
     addChild(lbl);
 
-    lbl = CCLabelBMFont::create(fmt::format("ID: {}", std::to_string(levelId)).c_str(), "chatFont.fnt");
+    lbl = CCLabelBMFont::create(("ID: " + std::to_string(levelId)).c_str(), "chatFont.fnt");
     lbl->setAnchorPoint({0, 0.5f});
     lbl->setPosition({11, 8});
     lbl->setScale(0.45f);
