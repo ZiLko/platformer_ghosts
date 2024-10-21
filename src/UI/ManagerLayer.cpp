@@ -11,7 +11,7 @@ void ManagerLayer::open(int id) {
 	layerReal->show();
 }
 
-VOID ManagerLayer::openFolder(CCObject*) {
+void ManagerLayer::openFolder(CCObject*) {
 	std::filesystem::path path = Mod::get()->getSaveDir() / std::to_string(currentLevel.id);
 	if (!std::filesystem::exists(path)) return;
 	file::openFolder(path);
