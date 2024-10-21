@@ -19,7 +19,7 @@ $execute {
     });
     geode::listenForSettingChanges("p2_opacity", +[](int64_t value) {
         Player::updateOpacity(true);
-    });
+    }); 
     geode::listenForSettingChanges("no_colors", +[](bool value) {
         Player::updateColors();
     });
@@ -34,7 +34,7 @@ $execute {
     });
     geode::listenForSettingChanges("off_screen_indicators", +[](bool value) {
         Player::updateCamera();
-    });
+    }); 
 
     Player::get().disabled = Mod::get()->getSettingValue<bool>("player_disabled");
     Recorder::get().disabled = Mod::get()->getSettingValue<bool>("recorder_disabled");

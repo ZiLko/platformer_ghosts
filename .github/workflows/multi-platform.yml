@@ -1,4 +1,4 @@
-name: Build Geode Mod
+name: All Platforms
 
 on:
   workflow_dispatch:
