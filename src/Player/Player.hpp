@@ -20,7 +20,7 @@ public:
 
     bool spectated = false;
     bool isSpectating = false;
-    bool isRacing = true;
+    bool isRacing = false;
     bool shouldRestart = false;
     bool startRacing = false;
     bool completedLevel = false;
@@ -68,6 +68,7 @@ public:
     static void stopRacing();
     static void handleCompletion();
     static void playCompleteEffect();
+    static void playSpawnEffect(PlayerObject*);
     static void updateDisabled();
     static void updateOpacity(bool);
     static void updateColors();

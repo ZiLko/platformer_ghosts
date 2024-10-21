@@ -44,6 +44,7 @@ void Player::setup(PlayLayer* pl) {
         player->setPosition({ 0, 105 });
 		player->setID((("ghost-player"_spr) + std::to_string(i)).c_str());
         player->togglePlatformerMode(true);
+        player->setVisible(false);
         pl->m_objectLayer->addChild(player, realPlayer->getZOrder());
 
         if (i == 1)
@@ -60,8 +61,8 @@ void Player::setup(PlayLayer* pl) {
     p.icon2->setScale(0.5f);
     p.icon1->setID("player-icon1"_spr);
     p.icon2->setID("player-icon2"_spr);
-    pl->m_objectLayer->addChild(p.icon1, p.player1->getZOrder());
-    pl->m_objectLayer->addChild(p.icon2, p.player1->getZOrder());
+    pl->m_objectLayer->addChild(p.icon1);
+    pl->m_objectLayer->addChild(p.icon2);
 
     SimplePlayer* cube = SimplePlayer::create(1);
     cube->setScale(0.6f);
@@ -303,6 +304,8 @@ void Player::loadGhost(Replay replay, int selected) {
     p.currentAction = 0;
     p.currentRace = selected;
     p.isRacing = true;
+
+    if (p.player1) p.player1->setVisible(true);
 
     p.loadReplay(replay);
     resetState();
@@ -712,7 +715,7 @@ void Player::handleEffectAction(Action action) {
     PlayerObject* player = data.player2 ? player2 : player1;
     switch(data.effect) {
         case EffectType::Death: player->playDeathEffect(); break;
-        case EffectType::Respawn: player->playSpawnEffect(); player->setOpacity(110); break;
+        case EffectType::Respawn: Player::playSpawnEffect(player); break;
         case EffectType::Complete: {
             if (!player->isVisible()) break;
             player->playCompleteEffect(false, false); 
@@ -726,6 +729,15 @@ void Player::handleEffectAction(Action action) {
         }
     }
 }
+
+void Player::playSpawnEffect(PlayerObject* player) {
+    updateOpacity(false);
+    updateOpacity(true);
+    player->setVisible(true);
+    player->stopAllActions();
+    cocos2d::CCBlink* flashAction = cocos2d::CCBlink::create(0.4f, 4);
+    player->runAction(flashAction);
+}   
 
 void Player::handleInputAction(Action action) {
     if (!get().isSpectating) return;

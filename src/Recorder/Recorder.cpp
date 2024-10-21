@@ -209,6 +209,25 @@ void Recorder::handleEffect(int frame, EffectType effect, bool player2) {
     action.data = data;
     action.frame = frame;
     get().actions.push_back(action);
+
+    Loader::get()->queueInMainThread([] {
+        Action action;
+        action.type = ActionType::Position;
+        action.frame = Player::get().currentFrame;
+
+        PlayLayer* pl = PlayLayer::get();
+        cocos2d::CCPoint pos1 = pl->m_player1->getPosition();
+        cocos2d::CCPoint pos2 = pl->m_player2->getPosition();
+        float rot1 = pl->m_player1->getRotation();
+        float rot2 = pl->m_player2->getRotation();
+
+        PlayerData p1Data = { pos1, rot1, true };
+        PlayerData p2Data = { pos2, rot2, true };
+        PositionData data = { p1Data, p2Data };
+
+        action.data = data;
+        Recorder::get().actions.push_back(action);
+    });
 }
 
 void Recorder::recordVehicleAction(VehicleType vehicle, int frame, bool player2) {
@@ -222,10 +241,10 @@ void Recorder::recordVehicleAction(VehicleType vehicle, int frame, bool player2)
     action.data = data;
     get().actions.push_back(action);
 
-    Loader::get()->queueInMainThread([frame] {
+    Loader::get()->queueInMainThread([] {
         Action action;
         action.type = ActionType::Position;
-        action.frame = frame;
+        action.frame = Player::get().currentFrame;
 
         PlayLayer* pl = PlayLayer::get();
         cocos2d::CCPoint pos1 = pl->m_player1->getPosition();

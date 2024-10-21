@@ -125,6 +125,13 @@ class $modify(GameLayer, GJBaseGameLayer) {
 
 class $modify(PlayerObject) {
 
+    static void onModify(auto& self) {
+        if (!self.setHookPriority("PlayerObject::playSpawnEffect", 100))
+            log::warn("PlayerObject::playSpawnEffect hook priority fail xD.");
+        if (!self.setHookPriority("PlayerObject::playDeathEffect", 100))
+            log::warn("PlayerObject::playDeathEffect hook priority fail xD.");
+    }
+
     void update(float dt) {
         if (Player::canUpdatePlayer())
             PlayerObject::update(dt);
