@@ -9,7 +9,7 @@
 	"name": "Platformer Ghosts",
 	"version": "v1.0.0",
 	"developer": "Zilko",
-	"description": "Adds ghosts to your platformer records.",
+	"description": "Adds ghosts to platformer mode.",
 	"dependencies": [
         {
             "id": "cvolton.level-id-api",
