@@ -56,9 +56,6 @@ void Recorder::handleRecording(PlayLayer* pl, int frame) {
     Recorder& r = get();
     if (r.disabled) return;
 
-    int m = static_cast<int>(240.f / r.fps);
-    if (frame % m != 0) return;
-
     PlayerObject* p1 = pl->m_player1;  
     PlayerObject* p2 = pl->m_player2;
     cocos2d::CCPoint pos1 = p1->getPosition();
@@ -66,17 +63,20 @@ void Recorder::handleRecording(PlayLayer* pl, int frame) {
     float rot1 = p1->getRotation();
     float rot2 = p2->getRotation();
 
-    if (pos1 != r.prevPos1 || static_cast<int>(rot1) != r.prevRot1 || pos2 != r.prevPos2 || static_cast<int>(rot2) != r.prevRot2) {
-        Action action;
-        action.type = ActionType::Position;
-        action.frame = frame;
+    int m = static_cast<int>(240.f / r.fps);
+    if (frame % m == 0) { 
+        if (pos1 != r.prevPos1 || static_cast<int>(rot1) != r.prevRot1 || pos2 != r.prevPos2 || static_cast<int>(rot2) != r.prevRot2) {
+            Action action;
+            action.type = ActionType::Position;
+            action.frame = frame;
 
-        PlayerData p1Data = { pos1, rot1 };
-        PlayerData p2Data = { pos2, rot2 };
-        PositionData data = { p1Data, p2Data };
+            PlayerData p1Data = { pos1, rot1 };
+            PlayerData p2Data = { pos2, rot2 };
+            PositionData data = { p1Data, p2Data };
 
-        action.data = data;
-        r.actions.push_back(action);
+            action.data = data;
+            r.actions.push_back(action);
+        }
     }
 
     if (r.goingLeft1 != p1->m_isGoingLeft)
@@ -208,7 +208,9 @@ void Recorder::handleEffect(int frame, EffectType effect, bool player2) {
     action.type = ActionType::Effect;
     action.data = data;
     action.frame = frame;
-    get().actions.push_back(action);
+    Recorder::get().actions.push_back(action);
+
+    if (effect != EffectType::Complete) return;
 
     Loader::get()->queueInMainThread([] {
         Action action;

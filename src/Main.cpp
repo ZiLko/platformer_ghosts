@@ -85,16 +85,15 @@ class $modify(GameLayer, GJBaseGameLayer) {
         }
 
         int attemptFrame = static_cast<int>(pl->m_gameState.m_levelTime * 240.0);
-        if (!m_levelEndAnimationStarted && (m_fields->previousFrame == 0 || m_fields->previousFrame != attemptFrame))
+        if (!pl->m_levelEndAnimationStarted && (m_fields->previousFrame == 0 || m_fields->previousFrame != attemptFrame))
             m_fields->totalFrame++;
 
         m_fields->previousFrame = attemptFrame;
 
-        if (Player::get().isSpectating && m_levelEndAnimationStarted)
+        if (Player::get().isSpectating && pl->m_levelEndAnimationStarted)
             Player::handleCompletion();
 
-        if (!m_fields->levelComplete && m_levelEndAnimationStarted) {
-            m_fields->levelComplete = true;
+        if (!m_fields->levelComplete && pl->m_levelEndAnimationStarted) {
             Player::playCompleteEffect();
 
             Loader::get()->queueInMainThread([this] {
@@ -114,6 +113,7 @@ class $modify(GameLayer, GJBaseGameLayer) {
             });
         }
         
+        m_fields->levelComplete = m_levelEndAnimationStarted;
 
 		if (shouldReturn(this)) return;
 
@@ -189,19 +189,6 @@ class $modify(PlayerObject) {
         Recorder::handleEffect(frame, EffectType::Respawn, this == PlayLayer::get()->m_player2);
     }
 
-    void playCompleteEffect(bool b1, bool b2) {
-        PlayerObject::playCompleteEffect(b1, b2);
-
-        PlayLayer* pl = PlayLayer::get();
-        if (!pl) return;
-
-        if (!pl->m_levelSettings->m_platformerMode || pl->m_isTestMode || pl->m_isPracticeMode) return;
-        if (this != pl->m_player1 && this != pl->m_player2) return;
-
-        int frame = static_cast<GameLayer*>(m_gameLayer)->m_fields->totalFrame;
-        Recorder::handleEffect(frame, EffectType::Complete, this == pl->m_player2);
-    }
-
     void incrementJumps() {
         PlayerObject::incrementJumps();
 
@@ -247,16 +234,16 @@ class $modify(PlayLayer) {
             r.compareTime = RecordsManager::getBestCompletion(EditorIDs::getID(PlayLayer::get()->m_level)).info.time;
 
 		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || p.spectated) return;
-        float time = static_cast<GameLayer*>(m_player1->m_gameLayer)->m_fields->totalFrame / 240.f;
+
+        int frame = static_cast<GameLayer*>(m_player1->m_gameLayer)->m_fields->totalFrame;
+        float time = frame / 240.f;
         r.currentCompletionTime = time;
         if (r.compareTime == 0.f) r.compareTime = time * 2;
+
+        Recorder::handleEffect(frame, EffectType::Complete, false);
+        Recorder::handleEffect(frame, EffectType::Complete, true);
 		RecordsManager::handleCompletion(EditorIDs::getID(m_level), time, Recorder::getActions());
 	}
-
-    void resetLevel() {
-        PlayLayer::resetLevel();
-        static_cast<GameLayer*>(m_player1->m_gameLayer)->m_fields->levelComplete = false;
-    }
 	
 };
 
@@ -366,7 +353,7 @@ class $modify(EndLevelLayer) {
         if (!timeLabel) return;
 
         cocos2d::ccColor3B color = timeDifference < 0 ? ccc3(255, 29, 29) : ccc3(106, 255, 29);
-        if (timeDifference < 0.001f) {
+        if (time == Recorder::get().compareTime) {
             color = ccc3(255, 127, 29);
             timeString = "Tied";
         }

@@ -61,8 +61,8 @@ void Player::setup(PlayLayer* pl) {
     p.icon2->setScale(0.5f);
     p.icon1->setID("player-icon1"_spr);
     p.icon2->setID("player-icon2"_spr);
-    pl->m_objectLayer->addChild(p.icon1);
-    pl->m_objectLayer->addChild(p.icon2);
+    pl->addChild(p.icon1, 1000);
+    pl->addChild(p.icon2, 1000);
 
     SimplePlayer* cube = SimplePlayer::create(1);
     cube->setScale(0.6f);
@@ -203,39 +203,39 @@ void Player::updateCamera() {
             PlayerData data = getBorderPosition(pos, visible.second);
             pair.second->setPosition(data.position);
             pair.second->getChildByID("arrow"_spr)->setRotation(data.rotation);
-            pair.second->setScale(0.5f / PlayLayer::get()->m_gameState.m_cameraZoom);
         }
     }
 }
 
 PlayerData Player::getBorderPosition(cocos2d::CCPoint pos, bool isX) {
     PlayLayer* pl = PlayLayer::get();
-    cocos2d::CCPoint offset = ccp(22, 22) * (pl->m_gameState.m_cameraZoom * pl->m_gameState.m_cameraZoom);
-    cocos2d::CCSize win = (CCDirector::sharedDirector()->getWinSize() - (offset * 2)) / pl->m_gameState.m_cameraZoom;
-    cocos2d::CCPoint cam = pl->m_gameState.m_cameraPosition + offset;
-    cocos2d::CCPoint center = cam + win / 2;
+    cocos2d::CCSize offset = ccp(22, 22);
+    cocos2d::CCSize size = (pl->getContentSize() - (offset * 2)) / pl->m_gameState.m_cameraZoom;
+    cocos2d::CCPoint cam = pl->m_gameState.m_cameraPosition;
+    cocos2d::CCPoint center = cam + size / 2;
+    cocos2d::CCPoint center2 = size / 2;
 
     float a = abs(abs(center.x) - abs(pos.x));
     float b = abs(abs(center.y) - abs(pos.y));
     float m = b / a;
-    float x = cam.x + (pos.x > cam.x ? win.width : 0);
+    float x = pos.x > cam.x ? size.width : 0;
     float y = m * (center.x - cam.x);
-    y = center.y + y * (pos.y > center.y ? 1 : -1);
+    y = center2.y + y * (pos.y > center.y ? 1 : -1);
     
-    if (!isX || (isX && (y > cam.y + win.height || y < cam.y))) {
+    if (!isX || (isX && (y > size.height || y < 0))) {
         m = a / b;
         x = m * (center.y - cam.y);
-        x = center.x + x * (pos.x > center.x ? 1 : -1);
-        y = cam.y + (pos.y > cam.y ? win.height : 0);
+        x = center2.x + x * (pos.x > center.x ? 1 : -1);
+        y = pos.y > cam.y ? size.height : 0;
     }
 
     float rotation = -(std::atan2(pos.y - center.y, pos.x - center.x) * (180.0 / M_PI) - 90.f);
-    return {ccp(x , y), rotation, false};
+    return {ccp(x , y) * pl->m_gameState.m_cameraZoom + offset, rotation, false};
 }
 
 std::pair<bool, bool> Player::isInsideCamera(cocos2d::CCPoint pos, float scale) {
     PlayLayer* pl = PlayLayer::get();
-    cocos2d::CCSize win = CCDirector::sharedDirector()->getWinSize() / pl->m_gameState.m_cameraZoom;
+    cocos2d::CCSize win = pl->getContentSize() / pl->m_gameState.m_cameraZoom;
     cocos2d::CCPoint cam = pl->m_gameState.m_cameraPosition;
     cocos2d::CCPoint posLeft = pos + ccp(32.5f, 32.5f) * scale;
     cocos2d::CCPoint posRight = pos - ccp(32.5f, 32.5f) * scale;
@@ -380,8 +380,8 @@ void Player::handlePlaying(GJBaseGameLayer* bgl, int frame) {
     Player& p = get();
     p.currentFrame = frame;
 
-    if (!p.isRacing && !p.isSpectating) return;
-    if (p.actions.empty() || p.disabled) return;
+    if (!p.isRacing && !p.isSpectating) return updateCamera();
+    if (p.actions.empty() || p.disabled) return updateCamera();
 
     if (p.isSpectating && frame == static_cast<int>(p.info.time * 240.f)) {
         std::pair<cocos2d::CCPoint, cocos2d::CCPoint> pos = p.getLatestPositions();
@@ -402,6 +402,8 @@ void Player::handlePlaying(GJBaseGameLayer* bgl, int frame) {
         pl->m_player1->setVisible(false);
         pl->m_player2->setVisible(false);
     }
+
+    updateCamera();
 }
 
 void Player::startSpectating(Replay replay, int spectate) {
@@ -617,8 +619,6 @@ void Player::handlePositionAction(Action action) {
         } else
 			player2->setRotation(lastRotation2 + rotationOffset2);
     }
-
-    Player::updateCamera();
 }
 
 void Player::handleVehicleAction(Action action) {
@@ -717,14 +717,13 @@ void Player::handleEffectAction(Action action) {
         case EffectType::Death: player->playDeathEffect(); break;
         case EffectType::Respawn: Player::playSpawnEffect(player); break;
         case EffectType::Complete: {
-            if (!player->isVisible()) break;
-            player->playCompleteEffect(false, false); 
+            if (player->isVisible()) player->playCompleteEffect(false, false); 
 
             Player& p = get();
             p.ghostCompletedLevel = true;
             if (p.icon1) p.icon1->setVisible(false);
             if (p.icon2) p.icon2->setVisible(false);
-            
+
             break;
         }
     }
