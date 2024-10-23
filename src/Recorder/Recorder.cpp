@@ -339,3 +339,11 @@ void Recorder::recordAnimationAction(int frame, bool robot, bool player2, Animat
     action.frame = frame;
     get().actions.push_back(action);
 }
+
+void Recorder::recordResetAction(int frame) {
+    Action action;
+    action.type = ActionType::Reset;
+    action.data = true;
+    action.frame = frame;
+    get().actions.push_back(action);
+}

@@ -27,6 +27,7 @@ public:
     static void saveAnimationAction(nlohmann::json&, Action);
     static void saveEffectAction(nlohmann::json&, Action);
     static void saveInputAction(nlohmann::json&, Action);
+    static void saveResetAction(nlohmann::json&, Action);
 
     static void loadPositionAction(Action&, nlohmann::json);
     static void loadVehicleAction(Action&, nlohmann::json);
@@ -36,5 +37,6 @@ public:
     static void loadAnimationAction(Action&, nlohmann::json);
     static void loadEffectAction(Action&, nlohmann::json);
     static void loadInputAction(Action&, nlohmann::json);
+    static void loadResetAction(Action&, nlohmann::json);
 
 };

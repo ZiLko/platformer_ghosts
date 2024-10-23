@@ -14,7 +14,8 @@ enum ActionType {
 	Mini = 6,
 	Flip = 7,
 	Sideways = 8,
-	Input = 9
+	Input = 9,
+	Reset = 10
 };
 
 enum AnimationType {

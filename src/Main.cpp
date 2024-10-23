@@ -208,7 +208,7 @@ class $modify(PlayerObject) {
 };
 
 class $modify(PlayLayer) {
-	
+
 	void setupHasCompleted() {
 		PlayLayer::setupHasCompleted();
         Player::clear();
@@ -219,6 +219,17 @@ class $modify(PlayLayer) {
             Player::setup(this);
         });
 	}
+
+    void resetLevel() {
+        Player& p = Player::get();
+
+        if (p.canReset || !p.isSpectating)
+            PlayLayer::resetLevel();
+
+        if (Recorder::get().disabled) return;
+        
+        Recorder::recordResetAction(static_cast<GameLayer*>(GJBaseGameLayer::get())->m_fields->totalFrame);
+    }
 
 	void levelComplete() {
         Player& p = Player::get();

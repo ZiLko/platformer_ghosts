@@ -265,6 +265,7 @@ void Player::resetState() {
     p.spectatorInput = false;
     p.updatePlayer = false;
     p.spectated = false;
+    p.canReset = false;
 
     if (p.actions.empty()) return;
     if (!p.player1 || !p.player2) return;
@@ -358,6 +359,7 @@ void Player::handleActions() {
             case ActionType::Animation: p.handleAnimationAction(action); break;
             case ActionType::Effect: p.handleEffectAction(action); break;
             case ActionType::Input: p.handleInputAction(action); break;
+            case ActionType::Reset: p.handleResetAction(action); break;
         }
 			
         if (action.type != ActionType::Position)
@@ -414,6 +416,7 @@ void Player::startSpectating(Replay replay, int spectate) {
     p.isRacing = false;
     p.isSpectating = true;
     p.shouldRestart = true;
+    p.canReset = false;
     p.loadReplay(replay);
 }
 
@@ -437,6 +440,7 @@ void Player::stopSpectating() {
     p.isRacing = false;
     p.isSpectating = false;
     p.shouldRestart = true;
+    p.canReset = false;
 
     if (!p.player1 || !p.player2) return;
 
@@ -580,6 +584,15 @@ void Player::playCompleteEffect() {
     p.player2->setVisible(false);
 }
 
+void Player::playSpawnEffect(PlayerObject* player) {
+    updateOpacity(false);
+    updateOpacity(true);
+    player->setVisible(true);
+    player->stopAllActions();
+    cocos2d::CCBlink* flashAction = cocos2d::CCBlink::create(0.4f, 4);
+    player->runAction(flashAction);
+}
+
 void Player::handleCompletion() {
     Player& p = get();
 
@@ -714,7 +727,14 @@ void Player::handleEffectAction(Action action) {
     EffectData data = std::get<EffectData>(action.data);
     PlayerObject* player = data.player2 ? player2 : player1;
     switch(data.effect) {
-        case EffectType::Death: player->playDeathEffect(); break;
+        case EffectType::Death: {
+            player->playDeathEffect();
+            if (get().isSpectating) {
+                PlayLayer* pl = PlayLayer::get();
+                pl->PlayLayer::destroyPlayer(pl->m_player1, pl->m_player1);
+            }
+            break;
+        }
         case EffectType::Respawn: Player::playSpawnEffect(player); break;
         case EffectType::Complete: {
             #ifndef GEODE_IS_MACOS
@@ -729,15 +749,6 @@ void Player::handleEffectAction(Action action) {
             break;
         }
     }
-}
-
-void Player::playSpawnEffect(PlayerObject* player) {
-    updateOpacity(false);
-    updateOpacity(true);
-    player->setVisible(true);
-    player->stopAllActions();
-    cocos2d::CCBlink* flashAction = cocos2d::CCBlink::create(0.4f, 4);
-    player->runAction(flashAction);
 }   
 
 void Player::handleInputAction(Action action) {
@@ -752,4 +763,13 @@ void Player::handleInputAction(Action action) {
 
     data.down ? player->pushButton(btn) : player->releaseButton(btn);
     get().updatePlayer = true;
+}
+
+void Player::handleResetAction(Action action) {
+    if (!get().isSpectating) return;
+    if (PlayLayer* pl = PlayLayer::get()) {
+        get().canReset = true;
+        pl->resetLevel();
+        get().canReset = false;
+    }
 }

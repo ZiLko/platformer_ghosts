@@ -52,5 +52,6 @@ public:
     static void recordMiniAction(int, bool, bool);
     static void recordSidewaysAction(int, float, bool);
     static void recordAnimationAction(int, bool, bool, AnimationType);
+    static void recordResetAction(int);
 
 };

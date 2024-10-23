@@ -29,6 +29,7 @@ public:
     bool p1Visible = false;
     bool disabled = false;
     bool updatePlayer = false;
+    bool canReset = false;
 
     PlayerObject* player1 = nullptr;
     PlayerObject* player2 = nullptr;
@@ -84,6 +85,7 @@ public:
     void handleAnimationAction(Action);
     void handleEffectAction(Action);
     void handleInputAction(Action);
+    void handleResetAction(Action);
 
     static void setPlayerColors(PlayerObject*, bool, int, int, int, bool);
     static void setPlayerIconColors(SimplePlayer*, bool, int, int, int, bool);
