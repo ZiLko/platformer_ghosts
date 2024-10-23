@@ -30,12 +30,14 @@ public:
     float prevRot2 = 0.f;
     float currentCompletionTime = 0.f;
     float compareTime = 0.f;
+    float time = 0.f;
 
     std::vector<Action> actions;
 
     static Recorder& get();
 
     static std::vector<Action> getActions();
+    static void setTime(float);
     static void resetState(bool);
     static VehicleType getCurrentVehicle(PlayerObject*);
 

@@ -10,6 +10,10 @@ std::vector<Action> Recorder::getActions() {
     return get().actions;
 }
 
+void Recorder::setTime(float time) {
+    get().time = time;
+}
+
 void Recorder::resetState(bool shouldRecord) {
     Recorder& r = get();
     r.goingLeft1 = false;
@@ -161,6 +165,7 @@ void Recorder::handleRecording(PlayLayer* pl, int frame) {
 }
 
 void Recorder::handlePortal(int id, int frame, bool player2, PlayerObject* player) {
+    if (get().disabled) return;
     if (gamemodePortals.contains(id)) {
         recordVehicleAction(static_cast<VehicleType>(id), frame, player2);
         return;
@@ -187,6 +192,7 @@ void Recorder::handlePortal(int id, int frame, bool player2, PlayerObject* playe
 }
 
 void Recorder::handleInput(int frame, int button, bool down, bool player2) {
+    if (get().disabled) return;
     Action action;
     InputData data = {
         button,
@@ -200,6 +206,7 @@ void Recorder::handleInput(int frame, int button, bool down, bool player2) {
 }
 
 void Recorder::handleEffect(int frame, EffectType effect, bool player2) {
+    if (get().disabled) return;
     Action action;
     EffectData data = {
         effect,

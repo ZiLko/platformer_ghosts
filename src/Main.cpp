@@ -221,33 +221,43 @@ class $modify(PlayLayer) {
 	}
 
 	void levelComplete() {
-		PlayLayer::levelComplete();
-        Recorder& r = Recorder::get();
         Player& p = Player::get();
+
+        bool wasTestMode = m_isTestMode;
+        if (p.spectated) m_isTestMode = true;
+		PlayLayer::levelComplete();
+        m_isTestMode = wasTestMode;
 
         if (p.icon1) p.icon1->setVisible(false);
         if (p.icon2) p.icon2->setVisible(false);
 
-        r.currentCompletionTime = 0.f;
+        Recorder& r = Recorder::get();
         r.compareTime = p.info.time;
         if (!p.isRacing)
             r.compareTime = RecordsManager::getBestCompletion(EditorIDs::getID(PlayLayer::get()->m_level)).info.time;
 
 		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || p.spectated) return;
 
-        int frame = static_cast<GameLayer*>(m_player1->m_gameLayer)->m_fields->totalFrame;
+        int frame = static_cast<GameLayer*>(GJBaseGameLayer::get())->m_fields->totalFrame;
         float time = frame / 240.f;
-        r.currentCompletionTime = time;
+        r.time = time;
         if (r.compareTime == 0.f) r.compareTime = time * 2;
 
+        if (r.disabled) return;
         Recorder::handleEffect(frame, EffectType::Complete, false);
         Recorder::handleEffect(frame, EffectType::Complete, true);
 		RecordsManager::handleCompletion(EditorIDs::getID(m_level), time, Recorder::getActions());
 	}
+
+    // void updateTimeLabel(int s, int hs, bool xd) {
+    //     PlayLayer::updateTimeLabel(s, hs, xd);
+    //     Recorder::setTime(s + (hs / 100.f));
+    // }
 	
 };
 
 class $modify(PauseLayer) {
+    
     void customSetup() {
         PauseLayer::customSetup();
 
@@ -328,14 +338,9 @@ class $modify(EndLevelLayer) {
         EndLevelLayer::customSetup();
         if (Mod::get()->getSettingValue<bool>("no_time_difference")) return;
 
-        float time = Recorder::get().currentCompletionTime;
-        if (time == 0.f || Player::get().spectated) return;
-
-        float timeDifference = Recorder::get().compareTime - time;
-        std::ostringstream oss;
-        oss << std::fixed << std::setprecision(abs(timeDifference) >= 0.01 ? 2 : 3) << abs(timeDifference);
-        std::string timeString = oss.str() + "s";
-        timeString = (timeDifference < 0 ? "+" : "-") + timeString;
+        float time = Recorder::get().time;
+        float compareTime = Recorder::get().compareTime;
+        if (compareTime == 0.f || Player::get().spectated) return;
 
         CCLabelBMFont* timeLabel = nullptr;
         if (Loader::get()->isModLoaded("geode.node-ids"))
@@ -352,8 +357,14 @@ class $modify(EndLevelLayer) {
         }
         if (!timeLabel) return;
 
+        float timeDifference = compareTime - time;
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(abs(timeDifference) >= 0.01 ? 2 : 3) << abs(timeDifference);
+        std::string timeString = oss.str() + "s";
+        timeString = (timeDifference < 0 ? "+" : "-") + timeString;
+
         cocos2d::ccColor3B color = timeDifference < 0 ? ccc3(255, 29, 29) : ccc3(106, 255, 29);
-        if (time == Recorder::get().compareTime) {
+        if (time == compareTime) {
             color = ccc3(255, 127, 29);
             timeString = "Tied";
         }
