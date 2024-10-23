@@ -5,11 +5,15 @@
 		"android": "2.206",
 		"mac": "2.206"
 	},
+	"tags": [
+		"gameplay", "interface", "offline", "utility"
+	],
 	"id": "zilko.platformer_ghosts",
 	"name": "Platformer Ghosts",
 	"version": "v1.0.0",
 	"developer": "Zilko",
 	"description": "Adds ghosts to platformer mode.",
+	"repository": "https://github.com/ZiLko/platformer_ghosts",
 	"dependencies": [
         {
             "id": "cvolton.level-id-api",
