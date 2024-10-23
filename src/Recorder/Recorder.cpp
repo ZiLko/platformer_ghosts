@@ -31,6 +31,7 @@ void Recorder::resetState(bool shouldRecord) {
     r.jumped1 = false;
     r.jumped2 = false;
     r.currentCompletionTime = 0.f;
+    r.time = 0.f;
     r.compareTime = 0.f;
     r.actions.clear();
 

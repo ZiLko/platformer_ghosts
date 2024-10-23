@@ -605,6 +605,7 @@ void Player::handleCompletion() {
         PlayLayer* pl = PlayLayer::get();
         pl->m_player1->setVisible(true);
         pl->m_player2->setVisible(pl->m_gameState.m_isDualMode);
+        Player::stopSpectating();
     }
 }
 

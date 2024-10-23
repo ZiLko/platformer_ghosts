@@ -213,6 +213,11 @@ class $modify(PlayLayer) {
 		PlayLayer::setupHasCompleted();
         Player::clear();
 
+        Recorder::resetState(false);
+        Player::resetState();
+
+        if (Player::get().isSpectating) Player::stopSpectating();
+
         if (!m_levelSettings->m_platformerMode) return;
 
         Loader::get()->queueInMainThread([this] {
@@ -223,7 +228,7 @@ class $modify(PlayLayer) {
     void resetLevel() {
         Player& p = Player::get();
 
-        if (p.canReset || !p.isSpectating)
+        if (p.canReset || !p.isSpectating || p.ghostCompletedLevel || m_levelEndAnimationStarted)
             PlayLayer::resetLevel();
 
         if (Recorder::get().disabled) return;
