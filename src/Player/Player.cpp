@@ -717,7 +717,9 @@ void Player::handleEffectAction(Action action) {
         case EffectType::Death: player->playDeathEffect(); break;
         case EffectType::Respawn: Player::playSpawnEffect(player); break;
         case EffectType::Complete: {
+            #ifndef GEODE_IS_MACOS
             if (player->isVisible()) player->playCompleteEffect(false, false); 
+            #endif
 
             Player& p = get();
             p.ghostCompletedLevel = true;
