@@ -249,6 +249,7 @@ class $modify(PlayLayer) {
 
         Recorder& r = Recorder::get();
         r.compareTime = p.info.time;
+        r.time = 0.f;
         if (!p.isRacing)
             r.compareTime = RecordsManager::getBestCompletion(EditorIDs::getID(PlayLayer::get()->m_level)).info.time;
 
@@ -349,19 +350,27 @@ class $modify(PauseLayer) {
 };
 
 class $modify(EndLevelLayer) {
+
+    static void onModify(auto& self) {
+        if (!self.setHookPriority("EndLevelLayer::customSetup", -200))
+            log::warn("EndLevelLayer::customSetup hook priority fail xD.");
+    }
     
     void customSetup() {
         EndLevelLayer::customSetup();
+
+        if (!PlayLayer::get()->m_levelSettings->m_platformerMode) return;
         if (Mod::get()->getSettingValue<bool>("no_time_difference")) return;
 
         float time = Recorder::get().time;
         float compareTime = Recorder::get().compareTime;
-        if (compareTime == 0.f || Player::get().spectated) return;
+        if (compareTime == 0.f || time == 0.f || Player::get().spectated) return;
 
         CCLabelBMFont* timeLabel = nullptr;
-        if (Loader::get()->isModLoaded("geode.node-ids"))
-            timeLabel = static_cast<CCLabelBMFont*>(m_mainLayer->getChildByID("time-label"));
-        else {
+        if (Loader::get()->isModLoaded("geode.node-ids")) {
+            if (CCNode* lbl = m_mainLayer->getChildByID("time-label"))
+                timeLabel = static_cast<CCLabelBMFont*>(lbl);
+        } else {
             for (CCNode* child : CCArrayExt<CCNode*>(m_mainLayer->getChildren())) {
                 CCLabelBMFont* lbl = typeinfo_cast<CCLabelBMFont*>(child);
                 if (!lbl) continue;

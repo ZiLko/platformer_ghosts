@@ -76,6 +76,65 @@ void ManagerLayer::deleteSelected(CCObject*) {
 	);
 }
 
+void ManagerLayer::onImportGhost(CCObject*) {
+	#ifdef GEODE_IS_WINDOWS
+
+    file::FilePickOptions::Filter filter = {
+        .files = { "*.json" }
+    };
+
+	#else
+
+	file::FilePickOptions::Filter filter = {};
+
+	#endif
+
+	file::FilePickOptions options = {
+        dirs::getGameDir(),
+        {filter}
+    };
+
+    listener.bind(this, &ManagerLayer::fileChosen);
+    listener.setFilter(file::pick(file::PickMode::OpenFile, options));
+
+}
+
+void ManagerLayer::fileChosen(Task<Result<std::filesystem::path>>::Event* event) {
+	if (event->isCancelled()) return;
+
+	auto res = event->getValue();
+	if (!res) return;
+	if (res->isErr()) return;
+	std::filesystem::path path = res->unwrap();
+	if (path.empty()) return;
+
+	nlohmann::json json = RecordsManager::loadJSON(path);
+	nlohmann::json infoJson = json["info"];
+	nlohmann::json actionsJson;
+	actionsJson["actions"] = json["actions"];
+	std::string name = std::to_string(infoJson["time"].get<float>()) + "_" + path.stem().string(); 	
+
+	std::filesystem::path folder1 = Mod::get()->getSaveDir() / std::to_string(infoJson["level_id"].get<int>());
+	if (!std::filesystem::exists(folder1))
+		std::filesystem::create_directory(folder1);
+
+	std::filesystem::path folder2 = folder1 / name;
+
+	int iterations = 0;
+	while (std::filesystem::exists(folder2)) {
+        iterations++;
+        folder2 = folder1 / fmt::format("{} ({})", name, std::to_string(iterations));
+    }
+
+	if (!std::filesystem::create_directory(folder2)) return;
+
+	RecordsManager::saveJSON(actionsJson, folder2 / "actions.json");
+	RecordsManager::saveJSON(infoJson, folder2 / "info.json");
+
+	reloadList(0);
+	Notification::create("Imported Ghost for \"" + infoJson["level_name"].get<std::string>() + "\"", NotificationIcon::Success)->show();
+}
+
 void ManagerLayer::onSelectAll(CCObject* obj) {
 	bool on = !static_cast<CCMenuItemToggler*>(obj)->isToggled();
 
@@ -188,6 +247,16 @@ bool ManagerLayer::setup(int id) {
 		menu_selector(ManagerLayer::openFolder)
 	);
 	btn->setPosition({120, -121});
+    m_buttonMenu->addChild(btn);
+
+	spr = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
+	spr->setScale(0.535f);
+	btn = CCMenuItemSpriteExtra::create(
+		spr,
+		this,
+		menu_selector(ManagerLayer::onImportGhost)
+	);
+	btn->setPosition({34, -121});
     m_buttonMenu->addChild(btn);
 
 	spr = CCSprite::createWithSpriteFrameName("GJ_trashBtn_001.png");
@@ -339,6 +408,70 @@ void ManagerLayer::addList(bool refresh, float prevScroll) {
 	m_mainLayer->addChild(scrollbar);
 }
 
+ExportLayer* ExportLayer::create(std::filesystem::path path) {
+	ExportLayer* ret = new ExportLayer();
+	if (ret->initAnchored(200, 120, path, "GJ_square02.png")) {
+		ret->autorelease();
+		return ret;
+	}
+
+	delete ret;
+	return nullptr;
+}
+
+bool ExportLayer::setup(std::filesystem::path path) {
+	this->path = path;
+	setTitle("Export Ghost");
+
+	input = TextInput::create(125, "Filename", "bigFont.fnt");
+	input->getInputNode()->setAllowedChars("abcdefghijklmnopqrstuvwxyz1234567890_");
+	input->setPosition({100, 65});
+	m_mainLayer->addChild(input);
+
+	ButtonSprite* spr = ButtonSprite::create("Export");
+	spr->setScale(0.75f);
+	CCMenuItemSpriteExtra* btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(ExportLayer::onExport));
+	btn->setPosition({100, 25});
+	m_buttonMenu->addChild(btn);
+
+	return true;
+}
+
+void ExportLayer::onExport(CCObject*) {
+	std::string filename = input->getString();
+	if (filename.empty()) {
+		FLAlertLayer::create("Export", "You need a <cl>filename</c>.", "Ok")->show();	
+		return;
+	}
+
+	std::filesystem::path folder = Mod::get()->getSaveDir() / "exports";
+
+	if (!std::filesystem::exists(folder)) std::filesystem::create_directory(folder);
+
+	std::string savePath = (folder / filename).string();
+	int iterations = 0;
+
+	while (std::filesystem::exists(savePath + ".json")) {
+        iterations++;
+
+        if (iterations > 1) {
+            int length = 3 + std::to_string(iterations - 1).length();
+            savePath.erase(savePath.length() - length, length);
+        }
+
+        savePath += fmt::format(" ({})", std::to_string(iterations));
+    }
+
+	savePath += ".json";
+
+	nlohmann::json json = RecordsManager::loadJSON(path / "actions.json");
+	json["info"] = RecordsManager::loadJSON(path / "info.json");
+	RecordsManager::saveJSON(json, savePath);
+
+	onClose(nullptr);
+	FLAlertLayer::create("Export", "Exported ghost at\n<cy>" + savePath + "</c>", "Ok")->show();
+}
+
 GhostCell* GhostCell::create(geode::Popup<int>* layer, std::pair<ReplayInfo, std::filesystem::path> replay, int rank) {
 	GhostCell* ret = new GhostCell();
 	if (!ret->init(replay)) {
@@ -368,9 +501,16 @@ bool GhostCell::init(std::pair<ReplayInfo, std::filesystem::path> replay) {
 	setColors(icon);
     addChild(icon);
 
-	CCLabelBMFont* nameLabel = CCLabelBMFont::create("Zilko", "bigFont.fnt");
+	std::string username = info.username;
+	if (username.length() > 14) {
+        username = username.substr(0, 14);
+        username += "...";   
+    }
+
+	CCLabelBMFont* nameLabel = CCLabelBMFont::create(username.c_str(), "bigFont.fnt");
+	nameLabel->limitLabelWidth(102.5f, 0.38f, 0.01f);
+	nameLabel->updateLabel();
 	nameLabel->setPosition({40, 28.5});
-    nameLabel->setScale(0.38f);
 	nameLabel->setAnchorPoint({0, 0.5});
 	addChild(nameLabel);
 
@@ -382,19 +522,30 @@ bool GhostCell::init(std::pair<ReplayInfo, std::filesystem::path> replay) {
 	addChild(lbl);
 
 	CCLabelBMFont* timeLabel = CCLabelBMFont::create(time.c_str(), "bigFont.fnt");
+	timeLabel->limitLabelWidth(82.f, 0.38f, 0.01f);
+	timeLabel->updateLabel();
 	timeLabel->setPosition({lbl->getPositionX() + 10, 28.5});
-    timeLabel->setScale(0.38f);
 	timeLabel->setAnchorPoint({0, 0.5});
 	addChild(timeLabel);
 
-	CCSprite* spr2 = CCSprite::createWithSpriteFrameName("GJ_trashBtn_001.png");
-	spr2->setScale(0.485f);
+	CCSprite* spr = CCSprite::createWithSpriteFrameName("GJ_trashBtn_001.png");
+	spr->setScale(0.485f);
 	CCMenuItemSpriteExtra* btn = CCMenuItemSpriteExtra::create(
-		spr2,
+		spr,
 		this,
 		menu_selector(GhostCell::onDelete)
 	);
 	btn->setPosition({303, 22.5f});
+	menu->addChild(btn);
+
+	spr = CCSprite::create("exportBtn.png"_spr);
+	spr->setScale(0.435f);
+	btn = CCMenuItemSpriteExtra::create(
+		spr,
+		this,
+		menu_selector(GhostCell::onExport)
+	);
+	btn->setPosition({275, 22.5f});
 	menu->addChild(btn);
 
 	CCSprite* spriteOn = CCSprite::createWithSpriteFrameName("GJ_checkOn_001.png");
@@ -402,7 +553,7 @@ bool GhostCell::init(std::pair<ReplayInfo, std::filesystem::path> replay) {
 
 	toggler = CCMenuItemToggler::create(spriteOff, spriteOn, this, menu_selector(GhostCell::onSelect));
 	toggler->setScale(0.535f);
-	toggler->setPosition({ 275, 22.5f });
+	toggler->setPosition({247, 22.5f});
 	menu->addChild(toggler);
 
 	lbl = CCLabelBMFont::create("Icons:", "chatFont.fnt");
@@ -473,6 +624,43 @@ void GhostCell::setColors(SimplePlayer* icon) {
     icon->updateColors();
 }
 
+void GhostCell::onExport(CCObject*) {
+	#ifdef GEODE_IS_WINDOWS
+
+    file::FilePickOptions::Filter filter = {
+        .files = { "*.json" }
+    };
+
+	file::FilePickOptions options = {
+        dirs::getGameDir(),
+        {filter}
+    };
+
+    listener.bind(this, &GhostCell::fileChosen);
+    listener.setFilter(file::pick(file::PickMode::SaveFile, options));
+
+    #else 
+	
+	ExportLayer::open(path);
+
+	#endif
+}
+
+void GhostCell::fileChosen(Task<Result<std::filesystem::path>>::Event* event) {
+	if (event->isCancelled()) return;
+
+	auto res = event->getValue();
+	if (!res) return;
+	if (res->isErr()) return;
+	std::filesystem::path savePath = res->unwrap();
+	if (savePath.empty()) return;
+	if (savePath.extension().string() != ".json") savePath += ".json";
+
+	nlohmann::json json = RecordsManager::loadJSON(path / "actions.json");
+	json["info"] = RecordsManager::loadJSON(path / "info.json");
+	RecordsManager::saveJSON(json, savePath);
+}
+
 void GhostCell::onDelete(CCObject*) {
 	geode::createQuickPopup(
 		"Warning",
@@ -487,23 +675,14 @@ void GhostCell::onDelete(CCObject*) {
 }
 
 void GhostCell::deleteCell(bool reload) {
-	try {
-		if (std::filesystem::remove_all(path)) {
-			if (reload) {
-				if (rank == Player::get().currentRace)
-					Player::stopRacing();
-				static_cast<ManagerLayer*>(loadLayer)->reloadList();
-				Notification::create("Ghost Deleted", NotificationIcon::Success)->show();
-			}
-			this->removeFromParentAndCleanup(true);
-		}
-		else
-			return FLAlertLayer::create("Error", "There was an error deleting this ghost.", "Ok")->show();
-
+	if (!std::filesystem::remove_all(path)) return;
+	if (reload) {
+		if (rank == Player::get().currentRace)
+			Player::stopRacing();
+		static_cast<ManagerLayer*>(loadLayer)->reloadList();
+		Notification::create("Ghost Deleted", NotificationIcon::Success)->show();
 	}
-	catch (const std::filesystem::filesystem_error& e) {
-		return FLAlertLayer::create("Error", "There was an error deleting this ghost.", "Ok")->show();
-	}
+	this->removeFromParentAndCleanup(true);
 }
 
 void GhostCell::onSelect(CCObject*) {

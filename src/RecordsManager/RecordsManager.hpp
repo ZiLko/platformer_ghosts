@@ -5,9 +5,11 @@ class RecordsManager {
 public: 
 
     static nlohmann::json loadJSON(std::filesystem::path);
+    static void saveJSON(nlohmann::json, std::filesystem::path);
     static void handleCompletion(int, float, std::vector<Action>);
     static void saveCompletion(std::filesystem::path, float, std::vector<Action>);
     static void deleteCompletion(std::filesystem::path);
+    static void exportGhost(std::pair<ReplayInfo, std::filesystem::path>, std::filesystem::path);
 
     static std::string getFormattedTime(float);
     static std::vector<std::pair<ReplayInfo, std::filesystem::path>> getLevelCompletions(int);
