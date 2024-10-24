@@ -12,6 +12,18 @@ nlohmann::json RecordsManager::loadJSON(std::filesystem::path path) {
     return json;
 }
 
+void RecordsManager::saveJSON(nlohmann::json json, std::filesystem::path path) {
+    std::ofstream file(path);
+    if (file.is_open()) {
+        file << json.dump();
+        file.close();
+    }
+}
+
+void RecordsManager::exportGhost(std::pair<ReplayInfo, std::filesystem::path> ghost, std::filesystem::path path) {
+    
+}
+
 std::string RecordsManager::getFormattedTime(float time) {
     std::string ret = "";
     int hours = static_cast<int>(time / 3600);
@@ -79,13 +91,9 @@ std::vector<GhostLevel> RecordsManager::getSavedLevels() {
 }
 
 void RecordsManager::handleCompletion(int levelId, float time, std::vector<Action> actions) {		
-    std::filesystem::path levelFolder = Mod::get()->getSaveDir() / std::to_string(levelId);
-
-	if (!std::filesystem::exists(levelFolder))
-		std::filesystem::create_directory(levelFolder);
-
-    saveCompletion(levelFolder, time, actions);
+    saveCompletion(Mod::get()->getSaveDir() / std::to_string(levelId), time, actions);
     Player& p = Player::get();
+    
     if (p.currentRace == 1 || p.currentRace == 0)
         Player::loadBestCompletion();
     else if (time < p.info.time) p.currentRace++;
@@ -178,6 +186,9 @@ std::vector<Action> RecordsManager::getCompletionActions(std::filesystem::path p
 }
 
 void RecordsManager::saveCompletion(std::filesystem::path folder, float time, std::vector<Action> actions) {
+    if (!std::filesystem::exists(folder))
+		std::filesystem::create_directory(folder);
+
     auto now = std::chrono::system_clock::now();
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
     std::filesystem::path realFolder = folder / (fmt::format("{}_{}", std::to_string(time), std::to_string(timestamp)));
@@ -226,11 +237,7 @@ void RecordsManager::saveCompletion(std::filesystem::path folder, float time, st
     infoJson["icons"]["spider"] = gm->getPlayerSpider();
     infoJson["icons"]["swing"] = gm->getPlayerSwing();
 
-    std::ofstream infoFile(infoPath);
-    if (infoFile.is_open()) {
-        infoFile << infoJson.dump();
-        infoFile.close();
-    }
+    saveJSON(infoJson, infoPath);
 
     cocos2d::CCPoint prev1 = ccp(0, 0);
     cocos2d::CCPoint prev2 = ccp(0, 0);
@@ -258,11 +265,7 @@ void RecordsManager::saveCompletion(std::filesystem::path folder, float time, st
         actionsJson["actions"].push_back(actionJson);
     }
 
-    std::ofstream actionsFile(actionsPath);
-    if (actionsFile.is_open()) {
-        actionsFile << actionsJson.dump();
-        actionsFile.close();
-    }
+    saveJSON(actionsJson, actionsPath);
 }
 
 std::unordered_map<VehicleType, int> RecordsManager::getCompletionIcons(std::filesystem::path path) {

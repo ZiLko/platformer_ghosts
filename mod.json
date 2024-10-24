@@ -10,7 +10,7 @@
 	],
 	"id": "zilko.platformer_ghosts",
 	"name": "Platformer Ghosts",
-	"version": "v1.0.1",
+	"version": "v1.0.2",
 	"developer": "Zilko",
 	"description": "Adds ghosts to platformer mode.",
 	"repository": "https://github.com/ZiLko/platformer_ghosts",
@@ -23,6 +23,7 @@
     ],
 	"resources": {
 		"sprites": [
+			"resources/exportBtn.png",
 			"resources/arrow.png",
 			"resources/raceGhost.png",
 			"resources/spectateGhost.png",
