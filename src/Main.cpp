@@ -305,7 +305,7 @@ class $modify(PauseLayer) {
             CCMenu* menu = CCMenu::create();
             menu->setID("button"_spr);
             addChild(menu);
-            btn->setPosition({214, 88});
+            btn->setPosition({-214, 88});
             menu->addChild(btn);
             return;
         }

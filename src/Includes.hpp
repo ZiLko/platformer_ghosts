@@ -103,9 +103,9 @@ struct Action {
 };
 
 struct PlayerColors {
-	int color1 = 1;
-	int color2 = 1;
-	int glowColor = 1;
+	int color1 = 12;
+	int color2 = 12;
+	int glowColor = 12;
 	bool glowEnabled = false;
 };
 

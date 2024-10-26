@@ -126,10 +126,10 @@ void RecordsLayer::addList() {
 
 	listLayer->setUserObject("dont-correct-borders", cocos2d::CCBool::create(true));
 
-	CCSprite* topBorder = static_cast<CCSprite*>(listLayer->getChildByID("top-border"));
-	CCSprite* bottomBorder = static_cast<CCSprite*>(listLayer->getChildByID("bottom-border"));
-	CCSprite* rightBorder = static_cast<CCSprite*>(listLayer->getChildByID("right-border"));
-	CCSprite* leftBorder = static_cast<CCSprite*>(listLayer->getChildByID("left-border"));
+	CCSprite* topBorder = getChildOfType<CCSprite>(listLayer, 1);
+	CCSprite* bottomBorder = getChildOfType<CCSprite>(listLayer, 0);
+	CCSprite* rightBorder = getChildOfType<CCSprite>(listLayer, 3);
+	CCSprite* leftBorder = getChildOfType<CCSprite>(listLayer, 2);
 
     topBorder->setScale(0.757f);
     bottomBorder->setScale(0.757f);

@@ -1,3 +1,9 @@
+# 1.0.3
+
+* Fixed no ghost colors not making ghosts white.
+* Fixed crash.
+* Fixed button position.
+
 # 1.0.2
 
 * Added ghost exporting and importing.

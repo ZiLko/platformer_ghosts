@@ -20,9 +20,8 @@ bool ListLayer::setup() {
     cocos2d::CCSize winSize = cocos2d::CCDirector::sharedDirector()->getWinSize();
 	CCArray* cellsArray = CCArray::create();
 
-    for (GhostLevel level : RecordsManager::getSavedLevels()) {
+    for (GhostLevel level : RecordsManager::getSavedLevels())
         cellsArray->addObject(LevelSelectCell::create(level));
-    }
 
 	ListView* listView = ListView::create(cellsArray, 40, 280, 210);
 	CCNode* contentLayer = static_cast<CCNode*>(listView->m_tableView->getChildren()->objectAtIndex(0));
@@ -36,8 +35,8 @@ bool ListLayer::setup() {
 
 	listLayer->setUserObject("dont-correct-borders", cocos2d::CCBool::create(true));
 
-	CCSprite* topBorder = static_cast<CCSprite*>(listLayer->getChildByID("top-border"));
-	CCSprite* bottomBorder = static_cast<CCSprite*>(listLayer->getChildByID("bottom-border"));
+	CCSprite* topBorder = getChildOfType<CCSprite>(listLayer, 1);
+	CCSprite* bottomBorder = getChildOfType<CCSprite>(listLayer, 0);
     topBorder->setScaleX(0.824f);
     bottomBorder->setScaleX(0.824f);
 
