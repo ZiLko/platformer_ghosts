@@ -1,3 +1,7 @@
+# 1.0.4
+
+* Fix crash.
+
 # 1.0.3
 
 * Fixed no ghost colors not making ghosts white.

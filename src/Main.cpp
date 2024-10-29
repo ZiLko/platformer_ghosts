@@ -209,6 +209,11 @@ class $modify(PlayerObject) {
 
 class $modify(PlayLayer) {
 
+    void onQuit() {
+        PlayLayer::onQuit();
+        Player::get().uiIcon = nullptr;
+    }
+
 	void setupHasCompleted() {
 		PlayLayer::setupHasCompleted();
         Player::clear();
@@ -346,6 +351,16 @@ class $modify(PauseLayer) {
         Loader::get()->queueInMainThread([pl] {
             pl->resetLevelFromStart();
         });
+    }
+
+    void onQuit(CCObject * sender) {
+        PauseLayer::onQuit(sender);
+        Player::get().uiIcon = nullptr;
+    }
+
+    void goEdit() {
+        PauseLayer::goEdit();
+        Player::get().uiIcon = nullptr;
     }
 };
 
