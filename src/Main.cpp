@@ -82,6 +82,11 @@ class $modify(GameLayer, GJBaseGameLayer) {
             Recorder::resetState(m_levelSettings->m_platformerMode && !m_isTestMode && !m_isPracticeMode);
             Player::resetState();
             m_fields->totalFrame = 0;
+        } else if (Player::get().shouldRestart) {
+            if (pl->m_isPracticeMode) pl->togglePracticeMode(false);
+            Loader::get()->queueInMainThread([] {
+                PlayLayer::get()->resetLevelFromStart();
+            });
         }
 
         int attemptFrame = static_cast<int>(pl->m_gameState.m_levelTime * 240.0);
@@ -233,10 +238,12 @@ class $modify(PlayLayer) {
     void resetLevel() {
         Player& p = Player::get();
 
-        if (p.canReset || !p.isSpectating || p.ghostCompletedLevel || m_levelEndAnimationStarted)
+        if (p.canReset || !p.isSpectating || p.ghostCompletedLevel || m_levelEndAnimationStarted || p.shouldRestart)
             PlayLayer::resetLevel();
 
         if (Recorder::get().disabled) return;
+
+        p.shouldRestart = false;
         
         Recorder::recordResetAction(static_cast<GameLayer*>(GJBaseGameLayer::get())->m_fields->totalFrame);
     }
@@ -320,38 +327,34 @@ class $modify(PauseLayer) {
         menu->updateLayout();
     }
 
-    void onResume(CCObject* obj) {
-        PlayLayer* pl = PlayLayer::get();
-        if (!pl) return PauseLayer::onResume(obj);
-        if (!Player::get().shouldRestart) return PauseLayer::onResume(obj);
-        if (pl->m_isTestMode) return PauseLayer::onResume(obj);
+    // void onResume(CCObject* obj) {
+    //     PauseLayer::onResume(obj);
+    //     PlayLayer* pl = PlayLayer::get();
 
-        if (pl->m_isPracticeMode)
-            PauseLayer::onNormalMode(nullptr);
-        else
-            PauseLayer::onResume(obj);
+    //     if (!pl) return;
+    //     if (pl->m_isTestMode) return;
+    //     if (!Player::get().shouldRestart) return;
 
-        Player::get().shouldRestart = false;
+    //     if (pl->m_isPracticeMode)
+    //         pl->togglePracticeMode(false);
 
-        Loader::get()->queueInMainThread([pl] {
-            pl->resetLevelFromStart();
-        });
-    }
+    //     Player::get().shouldRestart = false;
 
-    void onPracticeMode(CCObject* obj) {        
-        PlayLayer* pl = PlayLayer::get();
+    //     pl->resetLevelFromStart();
+    // }
 
-        if (!pl) return PauseLayer::onPracticeMode(obj);
-        if (!Player::get().shouldRestart) return PauseLayer::onPracticeMode(obj);
-        if (pl->m_isTestMode) return PauseLayer::onPracticeMode(obj);
+    // void onPracticeMode(CCObject* obj) {        
+    //     PlayLayer* pl = PlayLayer::get();
 
-        PauseLayer::onResume(nullptr);
+    //     if (!pl) return PauseLayer::onPracticeMode(obj);
+    //     if (!Player::get().shouldRestart) return PauseLayer::onPracticeMode(obj);
+    //     if (pl->m_isTestMode) return PauseLayer::onPracticeMode(obj);
 
-        Player::get().shouldRestart = false;
-        Loader::get()->queueInMainThread([pl] {
-            pl->resetLevelFromStart();
-        });
-    }
+    //     PauseLayer::onResume(nullptr);
+
+    //     Player::get().shouldRestart = false;
+    //     pl->resetLevel();
+    // }
 
     void onQuit(CCObject * sender) {
         PauseLayer::onQuit(sender);
@@ -366,17 +369,7 @@ class $modify(PauseLayer) {
 
 class $modify(EndLevelLayer) {
 
-    static void onModify(auto& self) {
-        if (!self.setHookPriority("EndLevelLayer::customSetup", -200))
-            log::warn("EndLevelLayer::customSetup hook priority fail xD.");
-    }
-    
-    void customSetup() {
-        EndLevelLayer::customSetup();
-
-        if (!PlayLayer::get()->m_levelSettings->m_platformerMode) return;
-        if (Mod::get()->getSettingValue<bool>("no_time_difference")) return;
-
+    void addTime() {
         float time = Recorder::get().time;
         float compareTime = Recorder::get().compareTime;
         if (compareTime == 0.f || time == 0.f || Player::get().spectated) return;
@@ -417,7 +410,17 @@ class $modify(EndLevelLayer) {
         lbl->setPositionX((timeLabel->getContentSize().width / 2.f) * timeLabel->getScale() + timeLabel->getPositionX());
         lbl->setColor(color);
         m_mainLayer->addChild(lbl);
+    }
+    
+    void customSetup() {
+        EndLevelLayer::customSetup();
 
+        if (!PlayLayer::get()->m_levelSettings->m_platformerMode) return;
+        if (Mod::get()->getSettingValue<bool>("no_time_difference")) return;
+
+        Loader::get()->queueInMainThread([this] {
+            this->addTime();
+        });
     }
     
 };

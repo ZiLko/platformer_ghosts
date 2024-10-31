@@ -384,18 +384,20 @@ void Player::handlePlaying(GJBaseGameLayer* bgl, int frame) {
 
     if (!p.isRacing && !p.isSpectating) return updateCamera();
     if (p.actions.empty() || p.disabled) return updateCamera();
+    if (p.isSpectating && p.shouldRestart) return;
 
-    if (p.isSpectating && frame == static_cast<int>(p.info.time * 240.f)) {
-        std::pair<cocos2d::CCPoint, cocos2d::CCPoint> pos = p.getLatestPositions();
-        PlayLayer::get()->m_player1->setPosition(pos.first);
-        PlayLayer::get()->m_player2->setPosition(pos.second);
+    if (p.isSpectating && frame >= static_cast<int>(p.info.time * 240.f) - 1) {
+        // std::pair<cocos2d::CCPoint, cocos2d::CCPoint> pos = p.getLatestPositions();
+        // PlayLayer* pl = PlayLayer::get();
+        // pl->m_player1->setPosition(pos.first);
+        // pl->m_player2->setPosition(pos.second);
         stopSpectating();
     }
 
     if (!p.player1 || !p.player2) {
 		p.player1 = static_cast<PlayerObject*>(bgl->m_objectLayer->getChildByID("ghost-player1"_spr));
 		p.player2 = static_cast<PlayerObject*>(bgl->m_objectLayer->getChildByID("ghost-player2"_spr));
-    }
+    } 
 
 	handleActions();
 
@@ -409,6 +411,7 @@ void Player::handlePlaying(GJBaseGameLayer* bgl, int frame) {
 }
 
 void Player::startSpectating(Replay replay, int spectate) {
+    stopRacing();
     Player& p = get();
     p.currentAction = 0;
     p.currentSpectate = spectate;
@@ -418,6 +421,7 @@ void Player::startSpectating(Replay replay, int spectate) {
     p.shouldRestart = true;
     p.canReset = false;
     p.loadReplay(replay);
+    if (p.player1) p.player1->setVisible(true);
 }
 
 void Player::stopRacing() {
@@ -439,8 +443,8 @@ void Player::stopSpectating() {
     p.spectatorInput = false;
     p.isRacing = false;
     p.isSpectating = false;
-    p.shouldRestart = true;
     p.canReset = false;
+    p.shouldRestart = true;
 
     if (!p.player1 || !p.player2) return;
 
@@ -753,7 +757,8 @@ void Player::handleEffectAction(Action action) {
 }   
 
 void Player::handleInputAction(Action action) {
-    if (!get().isSpectating) return;
+    Player& p = get();
+    if (!p.isSpectating) return;
 
     PlayLayer* pl = PlayLayer::get();
     if (!pl) return;
@@ -762,8 +767,12 @@ void Player::handleInputAction(Action action) {
     PlayerObject* player = data.player2 ? pl->m_player2 : pl->m_player1;
     PlayerButton btn = static_cast<PlayerButton>(data.button);
 
+    p.spectatorInput = true;
     data.down ? player->pushButton(btn) : player->releaseButton(btn);
-    get().updatePlayer = true;
+    p.updatePlayer = true;
+    Loader::get()->queueInMainThread([] {
+        Player::get().spectatorInput = false;
+    });
 }
 
 void Player::handleResetAction(Action action) {

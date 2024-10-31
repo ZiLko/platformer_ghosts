@@ -1,6 +1,8 @@
 # 1.0.4
 
-* Fix crash.
+* Fixed crash.
+* Fixed time difference label being in the wrong place when using EndScreenTweaks.
+* Fixed a bunch of ghost spectator bugs.
 
 # 1.0.3
 
