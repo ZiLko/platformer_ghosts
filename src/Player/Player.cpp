@@ -722,7 +722,12 @@ void Player::handleAnimationAction(Action action) {
     AnimationData data = std::get<AnimationData>(action.data);
     PlayerObject* player = data.player2 ? player2 : player1;
 
-    if (data.robot)
+    if (data.vehicle == VehicleType::Cube) {
+        player->animatePlatformerJump(1.0f);
+        return;
+    }
+
+    if (data.vehicle == VehicleType::Robot)
         player->m_robotSprite->tweenToAnimation(animationStrings.at(data.animation).c_str(), 0.1f);
     else
         player->m_spiderSprite->tweenToAnimation(animationStrings.at(data.animation).c_str(), 0.1f);

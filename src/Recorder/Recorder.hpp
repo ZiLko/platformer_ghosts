@@ -51,7 +51,7 @@ public:
     static void recordDualAction(bool, int);
     static void recordMiniAction(int, bool, bool);
     static void recordSidewaysAction(int, float, bool);
-    static void recordAnimationAction(int, bool, bool, AnimationType);
+    static void recordAnimationAction(int, VehicleType, bool, AnimationType);
     static void recordResetAction(int);
 
 };

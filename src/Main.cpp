@@ -277,11 +277,6 @@ class $modify(PlayLayer) {
         Recorder::handleEffect(frame, EffectType::Complete, true);
 		RecordsManager::handleCompletion(EditorIDs::getID(m_level), time, Recorder::getActions());
 	}
-
-    // void updateTimeLabel(int s, int hs, bool xd) {
-    //     PlayLayer::updateTimeLabel(s, hs, xd);
-    //     Recorder::setTime(s + (hs / 100.f));
-    // }
 	
 };
 
@@ -326,35 +321,6 @@ class $modify(PauseLayer) {
         menu->addChild(btn);
         menu->updateLayout();
     }
-
-    // void onResume(CCObject* obj) {
-    //     PauseLayer::onResume(obj);
-    //     PlayLayer* pl = PlayLayer::get();
-
-    //     if (!pl) return;
-    //     if (pl->m_isTestMode) return;
-    //     if (!Player::get().shouldRestart) return;
-
-    //     if (pl->m_isPracticeMode)
-    //         pl->togglePracticeMode(false);
-
-    //     Player::get().shouldRestart = false;
-
-    //     pl->resetLevelFromStart();
-    // }
-
-    // void onPracticeMode(CCObject* obj) {        
-    //     PlayLayer* pl = PlayLayer::get();
-
-    //     if (!pl) return PauseLayer::onPracticeMode(obj);
-    //     if (!Player::get().shouldRestart) return PauseLayer::onPracticeMode(obj);
-    //     if (pl->m_isTestMode) return PauseLayer::onPracticeMode(obj);
-
-    //     PauseLayer::onResume(nullptr);
-
-    //     Player::get().shouldRestart = false;
-    //     pl->resetLevel();
-    // }
 
     void onQuit(CCObject * sender) {
         PauseLayer::onQuit(sender);

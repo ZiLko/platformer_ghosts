@@ -60,7 +60,7 @@ struct EffectData {
 
 struct AnimationData {
 	AnimationType animation;
-	bool robot;
+	VehicleType vehicle;
 	bool player2;
 };
 

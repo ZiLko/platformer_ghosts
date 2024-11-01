@@ -106,28 +106,30 @@ void Recorder::handleRecording(PlayLayer* pl, int frame) {
     
     if (p1->m_isRobot || p1->m_isSpider) {
         if (p1->m_isOnGround && moving1 && (r.moving1 != moving1 || r.onGround1 != p1->m_isOnGround))
-            recordAnimationAction(frame, p1->m_isRobot, false, AnimationType::Run);
+            recordAnimationAction(frame, getCurrentVehicle(p1), false, AnimationType::Run);
         if (p1->m_isOnGround && !moving1 && (r.moving1 != moving1 || r.onGround1 != p1->m_isOnGround))
-            recordAnimationAction(frame, p1->m_isRobot, false, AnimationType::Idle);
+            recordAnimationAction(frame, getCurrentVehicle(p1), false, AnimationType::Idle);
         if (!p1->m_isOnGround && falling1 && r.falling1 != falling1)
-            recordAnimationAction(frame, p1->m_isRobot, false, AnimationType::Fall);
-        if (!p1->m_isOnGround && vel1 > 0.0 && r.jumped1) {
-            recordAnimationAction(frame, p1->m_isRobot, false, AnimationType::Jump);
-            r.jumped1 = false;
-        }
+            recordAnimationAction(frame, getCurrentVehicle(p1), false, AnimationType::Fall);
+    }
+
+    if (!p1->m_isOnGround && vel1 > 0.0 && r.jumped1) {
+        recordAnimationAction(frame, getCurrentVehicle(p1), false, AnimationType::Jump);
+        r.jumped1 = false;
     }
 
     if (p2->m_isRobot || p2->m_isSpider) {
         if (p2->m_isOnGround && moving2 && (r.moving2 != moving2 || r.onGround2 != p2->m_isOnGround))
-            recordAnimationAction(frame, p2->m_isRobot, true, AnimationType::Run);
+            recordAnimationAction(frame, getCurrentVehicle(p2), true, AnimationType::Run);
         if (p2->m_isOnGround && !moving2 && (r.moving2 != moving2 || r.onGround2 != p2->m_isOnGround))
-            recordAnimationAction(frame, p2->m_isRobot, true, AnimationType::Idle);
+            recordAnimationAction(frame, getCurrentVehicle(p2), true, AnimationType::Idle);
         if (!p2->m_isOnGround && falling2 && r.falling2 != falling2)
-            recordAnimationAction(frame, p2->m_isRobot, true, AnimationType::Fall);
-        if (!p2->m_isOnGround && vel2 > 0.0 && r.jumped2) {
-            recordAnimationAction(frame, p2->m_isRobot, true, AnimationType::Jump);
-            r.jumped2 = false;
-        }
+            recordAnimationAction(frame, getCurrentVehicle(p2), true, AnimationType::Fall);
+    }
+
+    if (!p2->m_isOnGround && vel2 > 0.0 && r.jumped2) {
+        recordAnimationAction(frame, getCurrentVehicle(p2), true, AnimationType::Jump);
+        r.jumped2 = false;
     }
 
     if (r.updatePlayer2Animation != 0 && r.updatePlayer2Animation == frame) {
@@ -137,13 +139,13 @@ void Recorder::handleRecording(PlayLayer* pl, int frame) {
 
         if (p2->m_isRobot || p2->m_isSpider) {
             if (p2->m_isOnGround && moving2)
-                recordAnimationAction(frame, p2->m_isRobot, true, AnimationType::Run);
+                recordAnimationAction(frame, getCurrentVehicle(p2), true, AnimationType::Run);
             if (p2->m_isOnGround && !moving2)
-                recordAnimationAction(frame, p2->m_isRobot, true, AnimationType::Idle);
+                recordAnimationAction(frame, getCurrentVehicle(p2), true, AnimationType::Idle);
             if (!p2->m_isOnGround && falling2)
-                recordAnimationAction(frame, p2->m_isRobot, true, AnimationType::Fall);
+                recordAnimationAction(frame, getCurrentVehicle(p2), true, AnimationType::Fall);
             if (!p2->m_isOnGround && vel2 > 0.0)
-                recordAnimationAction(frame, p2->m_isRobot, true, AnimationType::Jump);
+                recordAnimationAction(frame, getCurrentVehicle(p2), true, AnimationType::Jump);
         }
     }
 
@@ -328,11 +330,18 @@ void Recorder::recordSidewaysAction(int frame, float rotation, bool player2) {
         recordFlipAction(frame + 1, player2, (player2 ? pl->m_player2 : pl->m_player1)->m_isGoingLeft, false);
 }
 
-void Recorder::recordAnimationAction(int frame, bool robot, bool player2, AnimationType animation) {
+void Recorder::recordAnimationAction(int frame, VehicleType vehicle, bool player2, AnimationType animation) {
+    if (vehicle != VehicleType::Cube && vehicle != VehicleType::Robot && vehicle != VehicleType::Spider) return;
+    if (vehicle == VehicleType::Cube) {
+        PlayerObject* player = player2 ? PlayLayer::get()->m_player2 : PlayLayer::get()->m_player1;
+        int r = std::round(abs(player->getRotation()));
+        if (player->m_rotationSpeed != 0.0 || player->m_platformerXVelocity != 0.0) return;
+        if (r != 0 && r != 90 && r != 360 && r != 270 && r != 180) return;
+    }
     Action action;
     AnimationData data = {
         animation,
-        robot,
+        vehicle,
         player2
     };
     action.type = ActionType::Animation;

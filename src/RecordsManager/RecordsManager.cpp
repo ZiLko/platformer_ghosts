@@ -356,7 +356,7 @@ void RecordsManager::saveSidewaysAction(nlohmann::json& json, Action action) {
 void RecordsManager::saveAnimationAction(nlohmann::json& json, Action action) {
     AnimationData data = std::get<AnimationData>(action.data);
     json["d"]["a"] = static_cast<int>(data.animation);
-    json["d"]["r"] = data.robot;
+    json["d"]["v"] = static_cast<int>(data.vehicle);
     json["d"]["p2"] = data.player2;
 }
 
@@ -429,7 +429,8 @@ void RecordsManager::loadAnimationAction(Action& action, nlohmann::json json) {
     AnimationData data;
     data.animation = static_cast<AnimationType>(json["d"]["a"].get<int>());
     data.player2 = json["d"]["p2"].get<bool>();
-    data.robot = json["d"]["r"].get<bool>();
+    if (json["d"].contains("r")) data.vehicle = json["d"]["r"].get<bool>() ? VehicleType::Robot : VehicleType::Spider;
+    else if (json["d"].contains("v")) data.vehicle = static_cast<VehicleType>(json["d"]["v"].get<int>());
     action.data = data;
 }
 

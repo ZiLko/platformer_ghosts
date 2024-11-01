@@ -1,3 +1,7 @@
+# 1.0.5
+
+* Added cube jump animation to ghosts.
+
 # 1.0.4
 
 * Fixed crash.
