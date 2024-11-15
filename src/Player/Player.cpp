@@ -274,10 +274,10 @@ void Player::resetState() {
     setPlayerSprite(p.player2, VehicleType::Cube);
     updateUpsideDownState();
 
-    p.player1->setScaleX(1.f);
-    p.player1->setScaleY(1.f);
-    p.player2->setScaleX(1.f);
-    p.player2->setScaleY(1.f);
+    p.player1->CCNode::setScaleX(1.f);
+    p.player1->CCNode::setScaleY(1.f);
+    p.player2->CCNode::setScaleX(1.f);
+    p.player2->CCNode::setScaleY(1.f);
 
     p.player1->setPosition({0, 105});
     p.player2->setPosition({0, 105});
@@ -461,14 +461,14 @@ void Player::updateUpsideDownState() {
     if (!p.player1 || !p.player2) return;
 
     if (p.upsideDown1 && !nonInvertedVehicles.contains(p.currentVehicle1))
-        p.player1->setScaleY(-1 * abs(p.player1->getScaleY()));
+        p.player1->CCNode::setScaleY(-1 * abs(p.player1->getScaleY()));
     else
-        p.player1->setScaleY(abs(p.player1->getScaleY()));
+        p.player1->CCNode::setScaleY(abs(p.player1->getScaleY()));
 
     if (p.upsideDown2 && !nonInvertedVehicles.contains(p.currentVehicle2))
-        p.player2->setScaleY(-1 * abs(p.player2->getScaleY()));
+        p.player2->CCNode::setScaleY(-1 * abs(p.player2->getScaleY()));
     else
-        p.player2->setScaleY(abs(p.player2->getScaleY()));
+        p.player2->CCNode::setScaleY(abs(p.player2->getScaleY()));
 }
 
 void Player::setPlayerColors(PlayerObject* player, bool player2, int color1ID, int color2ID, int glowColorID, bool glowEnabled) {
@@ -573,8 +573,8 @@ void Player::setPlayerScale(PlayerObject* player, float scale, float x, float y)
     int negX = x < 0 ? -1 : 1;
     int negY = y < 0 ? -1 : 1;
 
-    player->setScaleX(scale * negX);
-    player->setScaleY(scale * negY);
+    player->CCNode::setScaleX(scale * negX);
+    player->CCNode::setScaleY(scale * negY);
 }
 
 void Player::playCompleteEffect() {
@@ -645,7 +645,7 @@ void Player::handleVehicleAction(Action action) {
     float scale = player->getScaleX();
 
     setPlayerSprite(player, data.vehicle);
-    player->setScaleX(scale);
+    player->CCNode::setScaleX(scale);
 
     if (data.player2)
         currentVehicle2 = data.vehicle;
@@ -690,7 +690,7 @@ void Player::handleFlipAction(Action action) {
     if (rot != 0.f)
         neg *= -1;
 
-    player->setScaleX(abs(player->getScaleX()) * neg);
+    player->CCNode::setScaleX(abs(player->getScaleX()) * neg);
 
 }
 
@@ -711,10 +711,10 @@ void Player::handleSidewaysAction(Action action) {
     SidewaysData data = std::get<SidewaysData>(action.data);
     if (data.player2) {
         rotationOffset2 = data.rotation;
-        player2->setScaleX(player2->getScaleX() * -1);
+        player2->CCNode::setScaleX(player2->getScaleX() * -1);
     } else {
         rotationOffset1 = data.rotation;
-        player1->setScaleX(player1->getScaleX() * -1);
+        player1->CCNode::setScaleX(player1->getScaleX() * -1);
     }
 }
 

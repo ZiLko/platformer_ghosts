@@ -44,7 +44,7 @@ public:
 
     static RecordsLayer* create() {
         RecordsLayer* ret = new RecordsLayer();
-        if (ret->init(315, 270, "GJ_square02.png")) {
+        if (ret->initAnchored(315, 270, "GJ_square02.png")) {
             ret->autorelease();
             return ret;
         }

@@ -4,7 +4,7 @@
 
 ListLayer* ListLayer::create() {
 	ListLayer* ret = new ListLayer();
-	if (ret->init(330, 280, "GJ_square02.png")) {
+	if (ret->initAnchored(330, 280, "GJ_square02.png")) {
 		ret->autorelease();
 		return ret;
 	}
@@ -35,8 +35,8 @@ bool ListLayer::setup() {
 
 	listLayer->setUserObject("dont-correct-borders", cocos2d::CCBool::create(true));
 
-	CCSprite* topBorder = getChildOfType<CCSprite>(listLayer, 1);
-	CCSprite* bottomBorder = getChildOfType<CCSprite>(listLayer, 0);
+	CCSprite* topBorder = listLayer->getChildByType<CCSprite>(1);
+	CCSprite* bottomBorder = listLayer->getChildByType<CCSprite>(0);
     topBorder->setScaleX(0.824f);
     bottomBorder->setScaleX(0.824f);
 
@@ -92,9 +92,9 @@ void LevelSelectCell::onSelect(CCObject*) {
     CCScene* scene = CCDirector::sharedDirector()->getRunningScene();
     int id = levelId;
 
-    if (ListLayer* layer = getChildOfType<ListLayer>(scene, 0))
+    if (ListLayer* layer = scene->getChildByType<ListLayer>(0))
         static_cast<FLAlertLayer*>(layer)->keyBackClicked();
-    if (ManagerLayer* layer = getChildOfType<ManagerLayer>(scene, 0))
+    if (ManagerLayer* layer = scene->getChildByType<ManagerLayer>(0))
         static_cast<FLAlertLayer*>(layer)->keyBackClicked();
 
     ManagerLayer::open(id);

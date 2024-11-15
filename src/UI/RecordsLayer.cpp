@@ -24,6 +24,8 @@ void RecordsLayer::open() {
 bool RecordsLayer::setup() {
     PlayLayer* pl = PlayLayer::get();
     if (!pl) return false;
+    CCMenu* menu = CCMenu::create();
+    m_mainLayer->addChild(menu);
 
     std::string levelName = pl->m_level->m_levelName;
     setTitle("Ghosts for \"" + levelName + "\"");
@@ -31,11 +33,17 @@ bool RecordsLayer::setup() {
     m_title->updateLabel();
     m_title->setPositionY(m_title->getPositionY() + 3);
 
+    cocos2d::CCPoint offset = (CCDirector::sharedDirector()->getWinSize() - m_mainLayer->getContentSize()) / 2;
+    m_mainLayer->setPosition(m_mainLayer->getPosition() - offset);
+    m_closeBtn->setPosition(m_closeBtn->getPosition() + offset);
+    m_bgSprite->setPosition(m_bgSprite->getPosition() + offset);
+    m_title->setPosition(m_title->getPosition() + offset);
+
     noGhostsLabel = CCLabelBMFont::create("No Saved Ghosts", "bigFont.fnt");
     noGhostsLabel->setScale(0.675f);
     noGhostsLabel->setPositionY(10);
     noGhostsLabel->setOpacity(141);
-    m_buttonMenu->addChild(noGhostsLabel);
+    menu->addChild(noGhostsLabel);
 
     addList();
 
@@ -43,7 +51,7 @@ bool RecordsLayer::setup() {
     spr->setScale(0.575f);
     CCMenuItemSpriteExtra* btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(RecordsLayer::onSettings));
     btn->setPosition({-134, -112});
-    m_buttonMenu->addChild(btn);
+    menu->addChild(btn);
 
     spr = CCSprite::createWithSpriteFrameName("GJ_plainBtn_001.png");
     spr->setScale(0.575f);
@@ -61,7 +69,7 @@ bool RecordsLayer::setup() {
     btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(RecordsLayer::onManager));
     btn->setPosition({134, -112});
     if (levels.empty()) btn->setEnabled(false);
-    m_buttonMenu->addChild(btn);
+    menu->addChild(btn);
 
     return true;
 }
@@ -126,10 +134,10 @@ void RecordsLayer::addList() {
 
 	listLayer->setUserObject("dont-correct-borders", cocos2d::CCBool::create(true));
 
-	CCSprite* topBorder = getChildOfType<CCSprite>(listLayer, 1);
-	CCSprite* bottomBorder = getChildOfType<CCSprite>(listLayer, 0);
-	CCSprite* rightBorder = getChildOfType<CCSprite>(listLayer, 3);
-	CCSprite* leftBorder = getChildOfType<CCSprite>(listLayer, 2);
+	CCSprite* topBorder = listLayer->getChildByType<CCSprite>(1);
+	CCSprite* bottomBorder = listLayer->getChildByType<CCSprite>(0);
+	CCSprite* rightBorder = listLayer->getChildByType<CCSprite>(3);
+	CCSprite* leftBorder = listLayer->getChildByType<CCSprite>(2);
 
     topBorder->setScale(0.757f);
     bottomBorder->setScale(0.757f);
@@ -159,7 +167,7 @@ void RecordsLayer::refresh() {
 	if (CCNode* lbl = m_mainLayer->getChildByID("no-ghosts-label"))
 		lbl->removeFromParentAndCleanup(true);
 	CCNode* listLayer = m_mainLayer->getChildByID("list-layer");
-	ListView* listView = getChildOfType<ListView>(listLayer, 0);
+	ListView* listView = listLayer->getChildByType<ListView>(0);
 	CCLayer* contentLayer = nullptr;
 	contentLayer = typeinfo_cast<CCLayer*>(listView->m_tableView->getChildren()->objectAtIndex(0));
     listLayer->removeFromParentAndCleanup(true);

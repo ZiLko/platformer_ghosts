@@ -25,7 +25,7 @@ void ManagerLayer::reloadList(int amount) {
 		lbl->removeFromParentAndCleanup(true);
 
 	CCNode* listLayer = m_mainLayer->getChildByID("list-layer");
-	ListView* listView = getChildOfType<ListView>(listLayer, 0);
+	ListView* listView = listLayer->getChildByType<ListView>(0);
 
 	CCLayer* contentLayer = nullptr;
 	contentLayer = typeinfo_cast<CCLayer*>(listView->m_tableView->getChildren()->objectAtIndex(0));
@@ -45,7 +45,7 @@ void ManagerLayer::reloadList(int amount) {
 	allCells.clear();
 	selectAllToggle->toggle(false);
 
-	if (RecordsLayer* layer = getChildOfType<RecordsLayer>(CCDirector::sharedDirector()->getRunningScene(), 0))
+	if (RecordsLayer* layer = CCDirector::sharedDirector()->getRunningScene()->getChildByType<RecordsLayer>(0))
 		layer->refresh();
 
 	addList(childrenCount > 7 && amount != 0, posY + (35.f * amount));
@@ -149,7 +149,7 @@ void ManagerLayer::onSelectAll(CCObject* obj) {
 
 ManagerLayer* ManagerLayer::create(int id) {
 	ManagerLayer* ret = new ManagerLayer();
-	if (ret->init(385, 291, id, "GJ_square02.png")) {
+	if (ret->initAnchored(385, 291, id, "GJ_square02.png")) {
 		ret->autorelease();
 		return ret;
 	}
@@ -203,17 +203,26 @@ bool ManagerLayer::setup(int id) {
 	m_title->setOpacity(179);
 	m_closeBtn->setScale(0.7f);
 
+	CCMenu* menu = CCMenu::create();
+	m_mainLayer->addChild(menu);
+
+	cocos2d::CCPoint offset = (CCDirector::sharedDirector()->getWinSize() - m_mainLayer->getContentSize()) / 2;
+    m_mainLayer->setPosition(m_mainLayer->getPosition() - offset);
+    m_closeBtn->setPosition(m_closeBtn->getPosition() + offset);
+    m_bgSprite->setPosition(m_bgSprite->getPosition() + offset);
+    m_title->setPosition(m_title->getPosition() + offset);
+
 	CCMenuItemSpriteExtra* btn = CCMenuItemSpriteExtra::create(CCLabelBMFont::create(
 		"              ", "goldFont.fnt"),
 		this, menu_selector(ManagerLayer::onLevelsList)
 	);
 	btn->setPositionY(104);
-	m_buttonMenu->addChild(btn);
+	menu->addChild(btn);
 
 	levelNameLabel = CCLabelBMFont::create(currentLevel.name.c_str(), "goldFont.fnt");
 	levelNameLabel->limitLabelWidth(160.f, 0.75f, 0.001f);
 	levelNameLabel->updateLabel();
-	levelNameLabel->setPosition(getChildOfType<CCLabelBMFont>(btn, 0)->getPosition());
+	levelNameLabel->setPosition(btn->getChildByType<CCLabelBMFont>(0)->getPosition());
 	btn->addChild(levelNameLabel);
 
 	CCSprite* spr = CCSprite::createWithSpriteFrameName("GJ_arrow_01_001.png");
@@ -223,7 +232,7 @@ bool ManagerLayer::setup(int id) {
 	btn->setPosition({-99, 104});
 	btn->setID("left");
 	if (levels.size() == 1) btn->setEnabled(false);
-	m_buttonMenu->addChild(btn);
+	menu->addChild(btn);
 
 
 	spr = CCSprite::createWithSpriteFrameName("GJ_arrow_01_001.png");
@@ -233,7 +242,7 @@ bool ManagerLayer::setup(int id) {
 	btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(ManagerLayer::switchLevel));
 	btn->setPosition({99, 104});
 	if (levels.size() == 1) btn->setEnabled(false);
-	m_buttonMenu->addChild(btn);
+	menu->addChild(btn);
 
 	CCSprite* emptyBtn = CCSprite::createWithSpriteFrameName("GJ_plainBtn_001.png");
 	emptyBtn->setScale(0.560f);
@@ -247,7 +256,7 @@ bool ManagerLayer::setup(int id) {
 		menu_selector(ManagerLayer::openFolder)
 	);
 	btn->setPosition({120, -121});
-    m_buttonMenu->addChild(btn);
+    menu->addChild(btn);
 
 	spr = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
 	spr->setScale(0.535f);
@@ -257,7 +266,7 @@ bool ManagerLayer::setup(int id) {
 		menu_selector(ManagerLayer::onImportGhost)
 	);
 	btn->setPosition({34, -121});
-    m_buttonMenu->addChild(btn);
+    menu->addChild(btn);
 
 	spr = CCSprite::createWithSpriteFrameName("GJ_trashBtn_001.png");
 	spr->setScale(0.61f);
@@ -267,7 +276,7 @@ bool ManagerLayer::setup(int id) {
 		menu_selector(ManagerLayer::deleteSelected)
 	);
 	btn->setPosition({163, -121});
-    m_buttonMenu->addChild(btn);
+    menu->addChild(btn);
 
 	CCSprite* spr1 = CCSprite::create("GJ_button_01.png");
 	CCSprite* spr2 = CCSprite::createWithSpriteFrameName("GJ_sortIcon_001.png");
@@ -283,7 +292,7 @@ bool ManagerLayer::setup(int id) {
 	sortToggle->setPosition({76, -121});
 	sortToggle->setScale(0.55f);
 	sortToggle->toggle(false);
-	m_buttonMenu->addChild(sortToggle);
+	menu->addChild(sortToggle);
 
 	CCSprite* spriteOn = CCSprite::createWithSpriteFrameName("GJ_checkOn_001.png");
 	CCSprite* spriteOff = CCSprite::createWithSpriteFrameName("GJ_checkOff_001.png");
@@ -291,19 +300,19 @@ bool ManagerLayer::setup(int id) {
 	selectAllToggle = CCMenuItemToggler::create(spriteOff, spriteOn, this, menu_selector(ManagerLayer::onSelectAll));
 	selectAllToggle->setScale(0.585f);
 	selectAllToggle->setPosition({ -165, -121 });
-    m_buttonMenu->addChild(selectAllToggle);
+    menu->addChild(selectAllToggle);
 
 	CCLabelBMFont* lbl = CCLabelBMFont::create("Select all", "bigFont.fnt");
 	lbl->setScale(0.4f);
 	lbl->setPosition({ -110, -121 });
-    m_buttonMenu->addChild(lbl);
+    menu->addChild(lbl);
 
 	ghostCountLabel = CCLabelBMFont::create("13 Ghosts", "chatFont.fnt");
 	ghostCountLabel->setOpacity(108);
 	ghostCountLabel->setScale(0.55f);
 	ghostCountLabel->setAnchorPoint({1.f, 0.5f});
 	ghostCountLabel->setPosition({180, 130});
-	m_buttonMenu->addChild(ghostCountLabel);
+	menu->addChild(ghostCountLabel);
 
 	addList();
 	return true;
@@ -372,10 +381,10 @@ void ManagerLayer::addList(bool refresh, float prevScroll) {
 
 	listLayer->setUserObject("dont-correct-borders", cocos2d::CCBool::create(true));
 
-	CCSprite* topBorder = getChildOfType<CCSprite>(listLayer, 1);
-	CCSprite* bottomBorder = getChildOfType<CCSprite>(listLayer, 0);
-	CCSprite* rightBorder = getChildOfType<CCSprite>(listLayer, 3);
-	CCSprite* leftBorder = getChildOfType<CCSprite>(listLayer, 2);
+	CCSprite* topBorder = listLayer->getChildByType<CCSprite>(1);
+	CCSprite* bottomBorder = listLayer->getChildByType<CCSprite>(0);
+	CCSprite* rightBorder = listLayer->getChildByType<CCSprite>(3);
+	CCSprite* leftBorder = listLayer->getChildByType<CCSprite>(2);
 
 	topBorder->setScaleX(0.945f);
 	topBorder->setScaleY(1.f);
@@ -422,6 +431,14 @@ ExportLayer* ExportLayer::create(std::filesystem::path path) {
 bool ExportLayer::setup(std::filesystem::path path) {
 	this->path = path;
 	setTitle("Export Ghost");
+	CCMenu* menu = CCMenu::create();
+	m_mainLayer->addChild(menu);
+
+	cocos2d::CCPoint offset = (CCDirector::sharedDirector()->getWinSize() - m_mainLayer->getContentSize()) / 2;
+    m_mainLayer->setPosition(m_mainLayer->getPosition() - offset);
+    m_closeBtn->setPosition(m_closeBtn->getPosition() + offset);
+    m_bgSprite->setPosition(m_bgSprite->getPosition() + offset);
+    m_title->setPosition(m_title->getPosition() + offset);
 
 	input = TextInput::create(125, "Filename", "bigFont.fnt");
 	input->getInputNode()->setAllowedChars("abcdefghijklmnopqrstuvwxyz1234567890_");
@@ -432,7 +449,7 @@ bool ExportLayer::setup(std::filesystem::path path) {
 	spr->setScale(0.75f);
 	CCMenuItemSpriteExtra* btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(ExportLayer::onExport));
 	btn->setPosition({100, 25});
-	m_buttonMenu->addChild(btn);
+	menu->addChild(btn);
 
 	return true;
 }

@@ -1,23 +1,23 @@
 {
-	"geode": "3.8.1",
+	"geode": "4.0.0-alpha.1",
 	"gd": {
-		"win": "2.206",
-		"android": "2.206",
-		"mac": "2.206"
+		"win": "2.2074",
+		"android": "2.2074",
+		"mac": "2.2074"
 	},
 	"tags": [
 		"gameplay", "interface", "offline", "utility", "modtober24"
 	],
 	"id": "zilko.platformer_ghosts",
 	"name": "Platformer Ghosts",
-	"version": "v1.0.5",
+	"version": "v1.1.0",
 	"developer": "Zilko",
 	"description": "Adds ghosts to platformer mode.",
 	"repository": "https://github.com/ZiLko/platformer_ghosts",
 	"dependencies": [
         {
             "id": "cvolton.level-id-api",
-            "version": ">=v1.0.0",
+            "version": ">=v1.1.0-alpha.2",
             "importance": "required"
         }
     ],

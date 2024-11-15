@@ -1,3 +1,7 @@
+# 1.1.0
+
+* 2.207
+
 # 1.0.5
 
 * Added cube jump animation to ghosts.

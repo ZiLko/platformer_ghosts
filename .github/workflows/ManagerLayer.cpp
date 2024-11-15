@@ -25,7 +25,7 @@ void ManagerLayer::reloadList(int amount) {
 		lbl->removeFromParentAndCleanup(true);
 
 	CCNode* listLayer = m_mainLayer->getChildByID("list-layer");
-	ListView* listView = getChildOfType<ListView>(listLayer, 0);
+	ListView* listView = listLayer->getChildByType<ListView>(0);
 
 	CCLayer* contentLayer = nullptr;
 	contentLayer = typeinfo_cast<CCLayer*>(listView->m_tableView->getChildren()->objectAtIndex(0));
@@ -45,7 +45,7 @@ void ManagerLayer::reloadList(int amount) {
 	allCells.clear();
 	selectAllToggle->toggle(false);
 
-	if (RecordsLayer* layer = getChildOfType<RecordsLayer>(CCDirector::sharedDirector()->getRunningScene(), 0))
+	if (RecordsLayer* layer = CCDirector->getChildByType<RecordsLayer>(sharedDirector()->getRunningScene(), 0))
 		layer->refresh();
 
 	addList(childrenCount > 7 && amount != 0, posY + (35.f * amount));
@@ -213,7 +213,7 @@ bool ManagerLayer::setup(int id) {
 	levelNameLabel = CCLabelBMFont::create(currentLevel.name.c_str(), "goldFont.fnt");
 	levelNameLabel->limitLabelWidth(160.f, 0.75f, 0.001f);
 	levelNameLabel->updateLabel();
-	levelNameLabel->setPosition(getChildOfType<CCLabelBMFont>(btn, 0)->getPosition());
+	levelNameLabel->setPosition(btn->getChildByType<CCLabelBMFont>(0)->getPosition());
 	btn->addChild(levelNameLabel);
 
 	CCSprite* spr = CCSprite::createWithSpriteFrameName("GJ_arrow_01_001.png");
@@ -372,10 +372,10 @@ void ManagerLayer::addList(bool refresh, float prevScroll) {
 
 	listLayer->setUserObject("dont-correct-borders", cocos2d::CCBool::create(true));
 
-	CCSprite* topBorder = getChildOfType<CCSprite>(listLayer, 1);
-	CCSprite* bottomBorder = getChildOfType<CCSprite>(listLayer, 0);
-	CCSprite* rightBorder = getChildOfType<CCSprite>(listLayer, 3);
-	CCSprite* leftBorder = getChildOfType<CCSprite>(listLayer, 2);
+	CCSprite* topBorder = listLayer->getChildByType<CCSprite>(1);
+	CCSprite* bottomBorder = listLayer->getChildByType<CCSprite>(0);
+	CCSprite* rightBorder = listLayer->getChildByType<CCSprite>(3);
+	CCSprite* leftBorder = listLayer->getChildByType<CCSprite>(2);
 
 	topBorder->setScaleX(0.945f);
 	topBorder->setScaleY(1.f);
