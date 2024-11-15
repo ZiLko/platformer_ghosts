@@ -15,10 +15,7 @@ jobs:
         - name: Windows
           os: windows-latest
           build-type: RelWithDebInfo
-
-        - name: macOS
-          os: macos-latest
-
+          
         - name: Android32
           os: ubuntu-latest
           target: Android32
