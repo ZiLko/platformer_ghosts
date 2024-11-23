@@ -44,6 +44,7 @@ bool RecordsLayer::setup() {
     noGhostsLabel->setPositionY(10);
     noGhostsLabel->setOpacity(141);
     menu->addChild(noGhostsLabel);
+    menu->setZOrder(10);
 
     addList();
 

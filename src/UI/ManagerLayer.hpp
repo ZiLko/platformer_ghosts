@@ -57,6 +57,7 @@ public:
 	CCMenuItemToggler* selectAllToggle = nullptr;
 	CCMenuItemToggler* sortToggle = nullptr;
 	CCLabelBMFont* ghostCountLabel = nullptr;
+	CCLabelBMFont* levelIdLabel = nullptr;
 	CCLabelBMFont* levelNameLabel = nullptr;
 
 	std::vector<GhostLevel> levels;

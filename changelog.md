@@ -1,3 +1,9 @@
+# 1.1.1
+
+* Fixed no ghosts label not showing.
+* Added level id label in ghosts manager.
+* Added mac support back.
+
 # 1.1.0
 
 * 2.207

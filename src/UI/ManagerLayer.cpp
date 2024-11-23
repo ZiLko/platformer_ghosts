@@ -314,6 +314,13 @@ bool ManagerLayer::setup(int id) {
 	ghostCountLabel->setPosition({180, 130});
 	menu->addChild(ghostCountLabel);
 
+	levelIdLabel = CCLabelBMFont::create("13124290", "chatFont.fnt");
+	levelIdLabel->setOpacity(108);
+	levelIdLabel->setScale(0.55f);
+	levelIdLabel->setAnchorPoint({1.f, 0.5f});
+	levelIdLabel->setPosition({180, 119});
+	menu->addChild(levelIdLabel);
+
 	addList();
 	return true;
 }
@@ -341,6 +348,7 @@ void ManagerLayer::addList(bool refresh, float prevScroll) {
 	}
 
 	ghostCountLabel->setString((std::to_string(cells->count()) + " Ghosts").c_str());
+	levelIdLabel->setString(std::to_string(currentLevel.id).c_str());
 
 	if (cells->count() == 0) {
 		CCLabelBMFont* lbl = CCLabelBMFont::create("No Ghosts", "bigFont.fnt");
