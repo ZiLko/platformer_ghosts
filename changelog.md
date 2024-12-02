@@ -1,3 +1,9 @@
+# 1.1.2
+
+* Fixed ghost not disappearing when deleting a ghost while watching it.
+* Fixed position being buggy when watching a ghost and restarting.
+* Added full ghost opacity setting.
+
 # 1.1.1
 
 * Fixed no ghosts label not showing.

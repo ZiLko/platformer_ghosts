@@ -10,7 +10,7 @@
 	],
 	"id": "zilko.platformer_ghosts",
 	"name": "Platformer Ghosts",
-	"version": "v1.1.1",
+	"version": "v1.1.2",
 	"developer": "Zilko",
 	"description": "Adds ghosts to platformer mode.",
 	"repository": "https://github.com/ZiLko/platformer_ghosts",
@@ -48,6 +48,12 @@
 			"min": 15,
 			"max": 240,
 			"default": 60
+		},
+		"spectator_opacity": {
+			"name": "Full opacity when watching.",
+			"description": "Makes the ghosts opacity 100% when watching it.",
+			"type": "bool",
+			"default": true
 		},
 		"p1_opacity": {
 			"name": "Player 1 ghost opacity (%)",

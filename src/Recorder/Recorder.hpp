@@ -46,6 +46,7 @@ public:
     static void handleEffect(int, EffectType, bool);
     static void handleInput(int, int, bool, bool);
 
+    static void recordPositionAction(int, bool);
     static void recordVehicleAction(VehicleType, int, bool);
     static void recordFlipAction(int, bool, bool, bool);
     static void recordDualAction(bool, int);

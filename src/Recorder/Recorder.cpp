@@ -67,22 +67,11 @@ void Recorder::handleRecording(PlayLayer* pl, int frame) {
     cocos2d::CCPoint pos2 = p2->getPosition();
     float rot1 = p1->getRotation();
     float rot2 = p2->getRotation();
+    bool diffPos = pos1 != r.prevPos1 || static_cast<int>(rot1) != r.prevRot1 || pos2 != r.prevPos2 || static_cast<int>(rot2) != r.prevRot2;
 
     int m = static_cast<int>(240.f / r.fps);
-    if (frame % m == 0) { 
-        if (pos1 != r.prevPos1 || static_cast<int>(rot1) != r.prevRot1 || pos2 != r.prevPos2 || static_cast<int>(rot2) != r.prevRot2) {
-            Action action;
-            action.type = ActionType::Position;
-            action.frame = frame;
-
-            PlayerData p1Data = { pos1, rot1 };
-            PlayerData p2Data = { pos2, rot2 };
-            PositionData data = { p1Data, p2Data };
-
-            action.data = data;
-            r.actions.push_back(action);
-        }
-    }
+    if (frame % m == 0 && diffPos)
+        recordPositionAction(Player::get().currentFrame, false);
 
     if (r.goingLeft1 != p1->m_isGoingLeft)
         recordFlipAction(frame, false, p1->m_isGoingLeft, false);
@@ -223,23 +212,29 @@ void Recorder::handleEffect(int frame, EffectType effect, bool player2) {
     if (effect != EffectType::Complete) return;
 
     Loader::get()->queueInMainThread([] {
-        Action action;
-        action.type = ActionType::Position;
-        action.frame = Player::get().currentFrame;
-
-        PlayLayer* pl = PlayLayer::get();
-        cocos2d::CCPoint pos1 = pl->m_player1->getPosition();
-        cocos2d::CCPoint pos2 = pl->m_player2->getPosition();
-        float rot1 = pl->m_player1->getRotation();
-        float rot2 = pl->m_player2->getRotation();
-
-        PlayerData p1Data = { pos1, rot1, true };
-        PlayerData p2Data = { pos2, rot2, true };
-        PositionData data = { p1Data, p2Data };
-
-        action.data = data;
-        Recorder::get().actions.push_back(action);
+        Recorder::recordPositionAction(Player::get().currentFrame, true);
     });
+}
+
+void Recorder::recordPositionAction(int frame, bool rot = false) {
+    PlayLayer* pl = PlayLayer::get();
+    if (!pl) return;
+
+    Action action;
+    action.type = ActionType::Position;
+    action.frame = Player::get().currentFrame;
+
+    cocos2d::CCPoint pos1 = pl->m_player1->getPosition();
+    cocos2d::CCPoint pos2 = pl->m_player2->getPosition();
+    float rot1 = pl->m_player1->getRotation();
+    float rot2 = pl->m_player2->getRotation();
+
+    PlayerData p1Data = { pos1, rot1, rot };
+    PlayerData p2Data = { pos2, rot2, rot };
+    PositionData data = { p1Data, p2Data };
+
+    action.data = data;
+    get().actions.push_back(action);
 }
 
 void Recorder::recordVehicleAction(VehicleType vehicle, int frame, bool player2) {
@@ -254,22 +249,7 @@ void Recorder::recordVehicleAction(VehicleType vehicle, int frame, bool player2)
     get().actions.push_back(action);
 
     Loader::get()->queueInMainThread([] {
-        Action action;
-        action.type = ActionType::Position;
-        action.frame = Player::get().currentFrame;
-
-        PlayLayer* pl = PlayLayer::get();
-        cocos2d::CCPoint pos1 = pl->m_player1->getPosition();
-        cocos2d::CCPoint pos2 = pl->m_player2->getPosition();
-        float rot1 = pl->m_player1->getRotation();
-        float rot2 = pl->m_player2->getRotation();
-
-        PlayerData p1Data = { pos1, rot1, true };
-        PlayerData p2Data = { pos2, rot2, true };
-        PositionData data = { p1Data, p2Data };
-
-        action.data = data;
-        Recorder::get().actions.push_back(action);
+        Recorder::recordPositionAction(Player::get().currentFrame, true);
     });
 }
 
@@ -356,4 +336,10 @@ void Recorder::recordResetAction(int frame) {
     action.data = true;
     action.frame = frame;
     get().actions.push_back(action);
+
+    Loader::get()->queueInMainThread([] {
+        Loader::get()->queueInMainThread([] {
+            Recorder::recordPositionAction(Player::get().currentFrame, true);
+        });
+    });
 }

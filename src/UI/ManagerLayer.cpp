@@ -704,6 +704,9 @@ void GhostCell::deleteCell(bool reload) {
 	if (reload) {
 		if (rank == Player::get().currentRace)
 			Player::stopRacing();
+		if (rank == Player::get().currentSpectate)
+			Player::stopSpectating();
+
 		static_cast<ManagerLayer*>(loadLayer)->reloadList();
 		Notification::create("Ghost Deleted", NotificationIcon::Success)->show();
 	}

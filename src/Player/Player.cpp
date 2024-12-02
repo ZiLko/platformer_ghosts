@@ -155,7 +155,10 @@ void Player::updateOpacity(bool player2) {
     PlayerObject* player = player2 ? p.player2 : p.player1;
     if (!player) return;
 
-    int opacity = static_cast<int>(Mod::get()->getSettingValue<int64_t>(player2 ? "p2_opacity" : "p1_opacity") / 100.f * 255);
+    int opacity = 255;
+    if (!Mod::get()->getSettingValue<bool>("spectator_opacity") || !p.isSpectating)
+        opacity = static_cast<int>(Mod::get()->getSettingValue<int64_t>(player2 ? "p2_opacity" : "p1_opacity") / 100.f * 255);
+
     player->setOpacity(opacity);
     player->m_spiderSprite->GJSpiderSprite::setOpacity(opacity);
     player->m_robotSprite->GJRobotSprite::setOpacity(opacity);
@@ -428,6 +431,7 @@ void Player::stopRacing() {
     Player& p = get();
     Player::resetState();
     if (p.player1) p.player1->setVisible(false);
+    if (p.player2) p.player2->setVisible(false);
     p.actions.clear();
     p.isRacing = false;
     p.currentRace = 0;
