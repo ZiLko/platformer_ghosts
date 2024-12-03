@@ -1,3 +1,8 @@
+# 1.1.3
+
+* Fixed ghost not respawning after dying when watching a replay.
+* Something else.
+
 # 1.1.2
 
 * Fixed ghost not disappearing when deleting a ghost while watching it.

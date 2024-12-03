@@ -51,12 +51,6 @@ bool shouldReturn(GJBaseGameLayer* pl) {
 
 class $modify(GameLayer, GJBaseGameLayer) {
 
-	struct Fields {
-		int totalFrame = 0;
-        int previousFrame = 0;
-        bool levelComplete = false;
-	};
-
     bool canBeActivatedByPlayer(PlayerObject * p0, EffectGameObject * p1) {
         if (!GJBaseGameLayer::canBeActivatedByPlayer(p0, p1)) return false;
 
@@ -67,7 +61,7 @@ class $modify(GameLayer, GJBaseGameLayer) {
         int id = p1->m_objectID;
         bool player2 = p0 == m_player2;
 
-        Recorder::handlePortal(id, m_fields->totalFrame, player2, p0);
+        Recorder::handlePortal(id, Recorder::get().totalFrame, player2, p0);
 
         return true;
     }
@@ -81,7 +75,7 @@ class $modify(GameLayer, GJBaseGameLayer) {
 		if (m_gameState.m_currentProgress <= 1) {
             Recorder::resetState(m_levelSettings->m_platformerMode && !m_isTestMode && !m_isPracticeMode);
             Player::resetState();
-            m_fields->totalFrame = 0;
+            Recorder::get().totalFrame = 0;
         } else if (Player::get().shouldRestart) {
             if (pl->m_isPracticeMode) pl->togglePracticeMode(false);
             Loader::get()->queueInMainThread([] {
@@ -90,15 +84,15 @@ class $modify(GameLayer, GJBaseGameLayer) {
         }
 
         int attemptFrame = static_cast<int>(pl->m_gameState.m_levelTime * 240.0);
-        if (!pl->m_levelEndAnimationStarted && (m_fields->previousFrame == 0 || m_fields->previousFrame != attemptFrame))
-            m_fields->totalFrame++;
+        if (!pl->m_levelEndAnimationStarted && (Recorder::get().previousFrame == 0 || Recorder::get().previousFrame != attemptFrame || m_player1->m_isDead))
+            Recorder::get().totalFrame++;
 
-        m_fields->previousFrame = attemptFrame;
+        Recorder::get().previousFrame = attemptFrame;
 
         if (Player::get().isSpectating && pl->m_levelEndAnimationStarted)
             Player::handleCompletion();
 
-        if (!m_fields->levelComplete && pl->m_levelEndAnimationStarted) {
+        if (!Recorder::get().levelComplete && pl->m_levelEndAnimationStarted) {
             Player::playCompleteEffect();
 
             Loader::get()->queueInMainThread([this] {
@@ -107,7 +101,7 @@ class $modify(GameLayer, GJBaseGameLayer) {
 
                 Action action;
                 action.type = ActionType::Position;
-                action.frame = m_fields->totalFrame + 1;
+                action.frame = Recorder::get().totalFrame + 1;
 
                 PlayerData p1Data = { pos1, 0.f };
                 PlayerData p2Data = { pos2, 0.f };
@@ -118,12 +112,12 @@ class $modify(GameLayer, GJBaseGameLayer) {
             });
         }
         
-        m_fields->levelComplete = m_levelEndAnimationStarted;
+        Recorder::get().levelComplete = m_levelEndAnimationStarted;
 
 		if (shouldReturn(this)) return;
 
-        Recorder::handleRecording(pl, m_fields->totalFrame);
-        Player::handlePlaying(this, m_fields->totalFrame);
+        Recorder::handleRecording(pl, Recorder::get().totalFrame);
+        Player::handlePlaying(this, Recorder::get().totalFrame);
     }
 
 };
@@ -158,7 +152,7 @@ class $modify(PlayerObject) {
 
         if (shouldReturnPlayer()) return true;
 
-        int frame = static_cast<GameLayer*>(m_gameLayer)->m_fields->totalFrame;
+        int frame = Recorder::get().totalFrame;
         Recorder::handleInput(frame, static_cast<int>(btn), true, this == PlayLayer::get()->m_player2);
 
         return true;
@@ -170,7 +164,7 @@ class $modify(PlayerObject) {
 
         if (shouldReturnPlayer()) return true;
         
-        int frame = static_cast<GameLayer*>(m_gameLayer)->m_fields->totalFrame;
+        int frame = Recorder::get().totalFrame;
         Recorder::handleInput(frame, static_cast<int>(btn), false, this == PlayLayer::get()->m_player2);
 
         return true;
@@ -181,7 +175,7 @@ class $modify(PlayerObject) {
 
         if (shouldReturnPlayer()) return;
 
-        int frame = static_cast<GameLayer*>(m_gameLayer)->m_fields->totalFrame;
+        int frame = Recorder::get().totalFrame;
         Recorder::handleEffect(frame, EffectType::Death, this == PlayLayer::get()->m_player2);
     }
 
@@ -190,7 +184,7 @@ class $modify(PlayerObject) {
 
         if (shouldReturnPlayer()) return;
 
-        int frame = static_cast<GameLayer*>(m_gameLayer)->m_fields->totalFrame;
+        int frame = Recorder::get().totalFrame;
         Recorder::handleEffect(frame, EffectType::Respawn, this == PlayLayer::get()->m_player2);
     }
 
@@ -245,7 +239,7 @@ class $modify(PlayLayer) {
 
         p.shouldRestart = false;
         
-        Recorder::recordResetAction(static_cast<GameLayer*>(GJBaseGameLayer::get())->m_fields->totalFrame);
+        Recorder::recordResetAction(Recorder::get().totalFrame);
     }
 
 	void levelComplete() {
@@ -267,7 +261,7 @@ class $modify(PlayLayer) {
 
 		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || p.spectated) return;
 
-        int frame = static_cast<GameLayer*>(GJBaseGameLayer::get())->m_fields->totalFrame;
+        int frame = Recorder::get().totalFrame;
         float time = frame / 240.f;
         r.time = time;
         if (r.compareTime == 0.f) r.compareTime = time * 2;

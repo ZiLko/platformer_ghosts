@@ -4,6 +4,10 @@ class Recorder {
 
 public:
 
+    int totalFrame = 0;
+    int previousFrame = 0;
+    bool levelComplete = false;
+
     bool goingLeft1 = false;
     bool goingLeft2 = false;
     bool upsideDown1 = false;

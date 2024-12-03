@@ -16,6 +16,11 @@ void Recorder::setTime(float time) {
 
 void Recorder::resetState(bool shouldRecord) {
     Recorder& r = get();
+    
+    r.totalFrame = 0;
+    r.previousFrame = 0;
+    r.levelComplete = false;
+
     r.goingLeft1 = false;
     r.goingLeft2 = false;
     r.upsideDown1 = false;
