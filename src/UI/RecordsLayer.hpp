@@ -38,7 +38,7 @@ class RecordsLayer: public geode::Popup<> {
 public:
 
     std::vector<RecordCell*> cells;
-    RecordCell* selectedRace = nullptr;
+    std::vector<RecordCell*> selectedRaces;
     RecordCell* selectedSpectate = nullptr;
     CCLabelBMFont* noGhostsLabel = nullptr;
 

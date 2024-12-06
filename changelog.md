@@ -1,3 +1,8 @@
+# 1.2.0
+
+* Added multiple ghosts support (had to rewrite the whole mod).
+* Fixed some spectator bug maybe.
+
 # 1.1.3
 
 * Fixed ghost not respawning after dying when watching a replay.

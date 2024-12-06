@@ -1,46 +1,232 @@
 #include "../RecordsManager/RecordsManager.hpp"
 #include "Player.hpp"
 
-Player& Player::get() {
-    static Player instance;
+PlayerManager& PlayerManager::get() {
+    static PlayerManager instance;
     return instance;
 }
 
-bool Player::canClick() {
-    Player& p = get();
-    if (!p.isSpectating) return true;
-    if (p.spectatorInput) return true;
-    return false;
+bool PlayerManager::containsTime(float time) {
+    return get().times.contains(time);
 }
 
-bool Player::canUpdatePlayer() {
-    Player& p = get();
-    if (!p.isSpectating) return true;
-    if (!p.updatePlayer) return false;
-    p.updatePlayer = false;
+void PlayerManager::hideIcons() {
+    for (Player& player : get().players)
+        player.hideIcons();
+}
+
+void PlayerManager::addPlayer(Replay replay, PlayLayer* pl) {
+    if (!pl) return;
+
+    Player player;
+    player.setup(pl);
+    player.loadReplay(replay);
+    get().players.push_back(player);
+    get().times[replay.info.time] = player;
+    get().updateUI();
+};
+
+void PlayerManager::removePlayer(Player player) {
+    for (int i = 0; i < get().players.size(); i++) {
+        Player& p = get().players[i];
+        if (get().players[i] == player) {
+            if (p.isSpectating) {
+                p.stopSpectating();
+                if (p.player1) p.player1->removeFromParentAndCleanup(true);
+                if (p.player2) p.player2->removeFromParentAndCleanup(true);
+                if (p.icon1) p.icon1->removeFromParentAndCleanup(true);
+                if (p.icon2) p.icon2->removeFromParentAndCleanup(true);
+            } else
+                p.stopRacing();
+            get().players.erase(get().players.begin() + i);
+            get().times.erase(player.info.time);
+            break;
+        }
+    }
+    get().updateUI();
+}
+
+void PlayerManager::resetState() {
+    for (Player& player : get().players)
+        player.resetState();
+}
+
+void PlayerManager::handleCompletion() {
+    for (Player& player : get().players)
+        player.handleCompletion();
+}
+
+void PlayerManager::playCompleteEffect() {
+    for (Player& player : get().players)
+        player.playCompleteEffect();
+}
+
+void PlayerManager::updateOpacity(bool p2) {
+    for (Player& player : get().players)
+        player.updateOpacity(p2);
+}
+
+void PlayerManager::updateDisabled() {
+    getDisabled() = Mod::get()->getSettingValue<bool>("player_disabled");
+    for (Player& player : get().players)
+        player.updateDisabled();
+    get().updateUI();
+}
+
+void PlayerManager::updateCamera() {
+    for (Player& player : get().players)
+        player.updateCamera();
+}
+
+void PlayerManager::updateColors() {
+    for (Player& player : get().players)
+        player.updateColors();
+}
+
+void PlayerManager::handlePlaying(GJBaseGameLayer* bgl, int frame) {
+    PlayerManager::getCurrentFrame() = frame;
+    for (Player& player : get().players)
+        player.handlePlaying(bgl, frame);
+}
+
+bool PlayerManager::canUpdatePlayer() {
+    if (!getIsSpectating()) return true;
+    if (!getUpdatePlayer()) return false;
+    getUpdatePlayer() = false;
     return true;
 }
 
+bool PlayerManager::canClick() {
+    if (!getIsSpectating()) return true;
+    return PlayerManager::getSpectatorInput();
+}
+
+void PlayerManager::setup(PlayLayer* pl) {
+    currentFrame = 0;
+    currentRace = 0;
+    currentSpectate = 0;
+    PlayerManager::getSpectated() = false;
+    isSpectating = false;
+    isRacing = false;
+    spectatorInput = false;
+    updatePlayer = false;
+    shouldRestart = false;
+    canReset = false;
+    disabled = false;
+    uiIcon = nullptr;
+    uiName = nullptr;
+    uiTime = nullptr;
+    players.clear();
+    times.clear();
+
+    std::vector<std::pair<ReplayInfo, std::filesystem::path>> completions;
+    completions = RecordsManager::getLevelCompletions(EditorIDs::getID(pl->m_level));
+    int i = 0;
+
+    for (std::pair<ReplayInfo, std::filesystem::path> completion : completions) {
+        if (!Mod::get()->getSettingValue<bool>("load_all_ghosts")) {
+            i++;
+            if (i > Mod::get()->getSettingValue<int64_t>("load_ghosts")) break;
+        }
+        Replay replay = {
+            completion.first,
+            RecordsManager::getCompletionActions(completion.second)
+        };
+        addPlayer(replay, pl);
+    }
+
+    updateDisabled();
+}
+
+void PlayerManager::clear() {
+    for (Player& player : get().players)
+        player.clear();
+}
+
+void PlayerManager::stopSpectating() {
+    Replay replay;
+    for (Player& player : get().players) {
+        if (!player.isSpectating) continue;
+        replay = {player.info, player.actions};
+        player.stopSpectating();
+        break;
+    }
+    get().spectated = true;
+    get().isSpectating = false;
+    get().spectatorInput = false;
+    if (PlayerManager::containsTime(replay.info.time))
+        PlayerManager::removePlayer(PlayerManager::get().times.at(replay.info.time));
+    PlayerManager::addPlayer(replay, PlayLayer::get());
+}
+
+void PlayerManager::updateUI() {
+    PlayLayer* pl = PlayLayer::get();
+    if (!pl) return;
+
+    if (!Mod::get()->getSettingValue<bool>("show_ui") || players.empty() || getDisabled()) {
+        if (!uiIcon) return;
+        uiIcon->removeFromParentAndCleanup(true);
+        uiTime->removeFromParentAndCleanup(true);
+        uiName->removeFromParentAndCleanup(true);
+        uiIcon = nullptr;
+        uiTime = nullptr;
+        uiName = nullptr;
+        return;
+    } else if (!uiIcon) {
+        cocos2d::CCSize size = pl->getContentSize();
+        uiIcon = SimplePlayer::create(1);
+        uiIcon->setScale(0.7f);
+        uiIcon->setPosition({23, size.height - 23});
+        uiIcon->setID("ui-icon"_spr);
+        pl->addChild(uiIcon, 500);
+
+        uiTime = CCLabelBMFont::create("1.008s", "goldFont.fnt");
+        uiTime->setAnchorPoint({0, 0.5f});
+        uiTime->setPosition({39, size.height - 32});
+        uiTime->setScale(0.525f);
+        uiTime->setID("ui-time"_spr);
+        pl->addChild(uiTime, 500);
+
+        uiName = CCLabelBMFont::create("Zilko", "goldFont.fnt");
+        uiName->setAnchorPoint({0, 0.5f});
+        uiName->setScale(0.525f);
+        uiName->setPosition({39, size.height - 14});
+        uiName->setID("ui-name"_spr);
+        pl->addChild(uiName, 500);
+    }
+    
+    ReplayInfo info;
+    bool started = false;
+    for (Player player : players) {
+        if (player.info.time < info.time || !started)
+            info = player.info;
+        started = true;
+    }
+
+    PlayerColors colors = info.colors;
+    if (info.icons.contains(VehicleType::Cube))
+        uiIcon->updatePlayerFrame(info.icons.at(VehicleType::Cube), IconType::Cube);
+    Player::setPlayerIconColors(uiIcon, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    uiTime->setString(RecordsManager::getFormattedTime(info.time).c_str());
+    uiName->setString(info.username.c_str());
+}
+
 std::vector<Action> Player::getActions() {
-    return get().actions;
+    return actions;
 }
 
 void Player::clear() {
-    Player& p = get();
-    p.actions.clear();
-    p.player1 = nullptr;
-    p.player2 = nullptr;
-    p.icon1 = nullptr;
-    p.icon2 = nullptr;
+    actions.clear();
+    player1 = nullptr;
+    player2 = nullptr;
+    icon1 = nullptr;
+    icon2 = nullptr;
 }
 
 void Player::setup(PlayLayer* pl) {
-    Player& p = get();
-
     for (int i = 1; i < 3; i++) {
         PlayerObject* realPlayer = i == 1 ? pl->m_player1 : pl->m_player2;
 		PlayerObject* player = PlayerObject::create(1, 1, pl, pl, true);
-        player->retain();
         player->setPosition({ 0, 105 });
 		player->setID((("ghost-player"_spr) + std::to_string(i)).c_str());
         player->togglePlatformerMode(true);
@@ -48,116 +234,74 @@ void Player::setup(PlayLayer* pl) {
         pl->m_objectLayer->addChild(player, realPlayer->getZOrder());
 
         if (i == 1)
-            p.player1 = player;
+            player1 = player;
         else
-            p.player2 = player;
+            player2 = player;
     }
 
-    p.icon1 = SimplePlayer::create(1);
-    p.icon2 = SimplePlayer::create(1);
-    p.icon1->setVisible(false);
-    p.icon2->setVisible(false);
-    p.icon1->setScale(0.5f);
-    p.icon2->setScale(0.5f);
-    p.icon1->setID("player-icon1"_spr);
-    p.icon2->setID("player-icon2"_spr);
-    pl->addChild(p.icon1, 1000);
-    pl->addChild(p.icon2, 1000);
+    icon1 = SimplePlayer::create(1);
+    icon2 = SimplePlayer::create(1);
+    icon1->setVisible(false);
+    icon2->setVisible(false);
+    icon1->setScale(0.5f);
+    icon2->setScale(0.5f);
+    icon1->setID("player-icon1"_spr);
+    icon2->setID("player-icon2"_spr);
+    pl->addChild(icon1, 1000);
+    pl->addChild(icon2, 1000);
 
     SimplePlayer* cube = SimplePlayer::create(1);
     cube->setScale(0.6f);
     cube->setPosition({6, 4});
     cube->setID("cube"_spr);
-    p.icon1->addChild(cube);
+    icon1->addChild(cube);
     cube = SimplePlayer::create(1);
     cube->setScale(0.6f);
     cube->setPosition({6, 4});
     cube->setID("cube"_spr);
-    p.icon2->addChild(cube);
+    icon2->addChild(cube);
     CCSprite* arrow = CCSprite::create("arrow.png"_spr);
     arrow->setID("arrow"_spr);
-    p.icon1->addChild(arrow);
+    icon1->addChild(arrow);
     arrow = CCSprite::create("arrow.png"_spr);
     arrow->setID("arrow"_spr);
-    p.icon2->addChild(arrow);
-
-    loadBestCompletion();
+    icon2->addChild(arrow);
 }
 
-void Player::updateUI() {
-    PlayLayer* pl = PlayLayer::get();
-    if (!pl) return;
-    Player& p = get();
-
-    if (!Mod::get()->getSettingValue<bool>("show_ui") || p.actions.empty() || (!p.isRacing && !!p.isSpectating)) {
-        if (!p.uiIcon) return;
-        p.uiIcon->removeFromParentAndCleanup(true);
-        p.uiTime->removeFromParentAndCleanup(true);
-        p.uiName->removeFromParentAndCleanup(true);
-        p.uiIcon = nullptr;
-        p.uiTime = nullptr;
-        p.uiName = nullptr;
-        return;
-    } else if (!p.uiIcon) {
-        cocos2d::CCSize size = pl->getContentSize();
-        p.uiIcon = SimplePlayer::create(1);
-        p.uiIcon->setScale(0.7f);
-        p.uiIcon->setPosition({23, size.height - 23});
-        p.uiIcon->setID("ui-icon"_spr);
-        pl->addChild(p.uiIcon, 500);
-
-        p.uiTime = CCLabelBMFont::create("1.008s", "goldFont.fnt");
-        p.uiTime->setAnchorPoint({0, 0.5f});
-        p.uiTime->setPosition({39, size.height - 32});
-        p.uiTime->setScale(0.525f);
-        p.uiTime->setID("ui-time"_spr);
-        pl->addChild(p.uiTime, 500);
-
-        p.uiName = CCLabelBMFont::create("Zilko", "goldFont.fnt");
-        p.uiName->setAnchorPoint({0, 0.5f});
-        p.uiName->setScale(0.525f);
-        p.uiName->setPosition({39, size.height - 14});
-        p.uiName->setID("ui-name"_spr);
-        pl->addChild(p.uiName, 500);
-    }
-
-    PlayerColors colors = p.info.colors;
-    p.uiIcon->updatePlayerFrame(p.info.icons.at(VehicleType::Cube), IconType::Cube);
-    setPlayerIconColors(p.uiIcon, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
-    p.uiTime->setString(RecordsManager::getFormattedTime(p.info.time).c_str());
-    p.uiName->setString(p.info.username.c_str());
+void Player::hideIcons() {
+    if (icon1) icon1->setVisible(false);
+    if (icon2) icon2->setVisible(false);
 }
 
 void Player::loadBestCompletion() {
-    Player& p = get();
     Replay bestCompletion = RecordsManager::getBestCompletion(EditorIDs::getID(PlayLayer::get()->m_level));
     if (!bestCompletion.actions.empty()) {
-        p.currentRace = 1;
-        p.isRacing = true;
-        p.loadReplay(bestCompletion);        
+        PlayerManager::getCurrentRace() = 1;
+        isRacing = true;
+        loadReplay(bestCompletion);      
     }
 }
 
 void Player::updateDisabled() {
-    Player& p = get();
-    p.disabled = Mod::get()->getSettingValue<bool>("player_disabled");
     if (!PlayLayer::get()) return;
-    if (p.disabled) {
-        if (p.player1) p.player1->setVisible(false);
-        if (p.player2) p.player2->setVisible(false);
+
+    if (PlayerManager::getDisabled()) {
+        if (player1) player1->setVisible(false);
+        if (player2) player2->setVisible(false);
+        if (icon1) icon1->setVisible(false);
+        if (icon2) icon2->setVisible(false);
     }
-    else if (!p.actions.empty())
-        loadGhost({ p.info, p.actions }, p.currentRace);
+    else if (!actions.empty())
+        loadReplay({ info, actions });
 }
 
-void Player::updateOpacity(bool player2) {
-    Player& p = get();
-    PlayerObject* player = player2 ? p.player2 : p.player1;
+void Player::updateOpacity(bool isPlayer2) {
+    PlayerObject* player = isPlayer2 ? player2 : player1;
     if (!player) return;
 
     int opacity = 255;
-    if (!Mod::get()->getSettingValue<bool>("spectator_opacity") || !p.isSpectating)
-        opacity = static_cast<int>(Mod::get()->getSettingValue<int64_t>(player2 ? "p2_opacity" : "p1_opacity") / 100.f * 255);
+    if (!Mod::get()->getSettingValue<bool>("spectator_opacity") || !isSpectating)
+        opacity = static_cast<int>(Mod::get()->getSettingValue<int64_t>(isPlayer2 ? "p2_opacity" : "p1_opacity") / 100.f * 255);
 
     player->setOpacity(opacity);
     player->m_spiderSprite->GJSpiderSprite::setOpacity(opacity);
@@ -165,37 +309,36 @@ void Player::updateOpacity(bool player2) {
 }
 
 void Player::updateColors() {
+    if (!player1 || !player2) return;
     PlayerColors colors;
-    Player& p = get();
 
     if (!Mod::get()->getSettingValue<bool>("no_colors"))
-        colors = p.info.colors;
+        colors = info.colors;
 
-    setPlayerColors(p.player1, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
-    setPlayerColors(p.player2, true, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
-    setPlayerIconColors(p.icon1, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
-    setPlayerIconColors(p.icon2, true, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    setPlayerColors(player1, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    setPlayerColors(player2, true, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    setPlayerIconColors(icon1, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
+    setPlayerIconColors(icon2, true, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
 
-    if (CCNode* cube = p.icon1->getChildByID("cube"_spr))
+    if (CCNode* cube = icon1->getChildByID("cube"_spr))
         setPlayerIconColors(static_cast<SimplePlayer*>(cube), false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
-    if (CCNode* cube = p.icon2->getChildByID("cube"_spr))
+    if (CCNode* cube = icon2->getChildByID("cube"_spr))
         setPlayerIconColors(static_cast<SimplePlayer*>(cube), true, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
 }
 
 void Player::updateCamera() {
     if (!PlayLayer::get()) return;
-    Player& p = get();
-    if (!p.icon1 || !p.icon2) return;
+    if (!icon1 || !icon2) return;
 
     bool enabled = Mod::get()->getSettingValue<bool>("off_screen_indicators");
-    if (p.actions.empty() || p.ghostCompletedLevel || !enabled) {
-        p.icon1->setVisible(false);
-        p.icon2->setVisible(false);
+    if (actions.empty() || ghostCompletedLevel || !enabled || isSpectating) {
+        icon1->setVisible(false);
+        icon2->setVisible(false);
         return;
     }
 
-    for (std::pair<PlayerObject*, SimplePlayer*> pair : {std::make_pair(p.player1, p.icon1), std::make_pair(p.player2, p.icon2)}) {
-        if (pair.first == p.player2 && !p.isDual) {
+    for (std::pair<PlayerObject*, SimplePlayer*> pair : {std::make_pair(player1, icon1), std::make_pair(player2, icon2)}) {
+        if (pair.first == player2 && !isDual) {
             pair.second->setVisible(false);
             continue;
         }
@@ -248,46 +391,44 @@ std::pair<bool, bool> Player::isInsideCamera(cocos2d::CCPoint pos, float scale) 
 }
 
 void Player::resetState() {
-    Player& p = get();
+    currentAction = 0;
+    PlayerManager::getCurrentFrame() = 0;
+    upsideDown1 = false;
+    upsideDown2 = false;
+    isDual = false;
+    isMini1 = false;
+    isMini2 = false;
+    currentVehicle1 = VehicleType::Cube;
+    currentVehicle2 = VehicleType::Cube;
+    rotationOffset1 = 0.f;
+    rotationOffset2 = 0.f;
+    lastRotation1 = 0.f;
+    lastRotation2 = 0.f;
+    completedLevel = false;
+    ghostCompletedLevel = false;
+    PlayerManager::getSpectatorInput() = false;
+    PlayerManager::getUpdatePlayer() = false;
+    PlayerManager::getCanReset() = false;
 
-    p.currentAction = 0;
-    p.currentFrame = 0;
-    p.upsideDown1 = false;
-    p.upsideDown2 = false;
-    p.isDual = false;
-    p.isMini1 = false;
-    p.isMini2 = false;
-    p.currentVehicle1 = VehicleType::Cube;
-    p.currentVehicle2 = VehicleType::Cube;
-    p.rotationOffset1 = 0.f;
-    p.rotationOffset2 = 0.f;
-    p.lastRotation1 = 0.f;
-    p.lastRotation2 = 0.f;
-    p.completedLevel = false;
-    p.ghostCompletedLevel = false;
-    p.spectatorInput = false;
-    p.updatePlayer = false;
-    p.spectated = false;
-    p.canReset = false;
+    if (actions.empty()) return;
+    if (!player1 || !player2) return;
+    if (PlayerManager::getDisabled()) return;
 
-    if (p.actions.empty()) return;
-    if (!p.player1 || !p.player2) return;
-
-    setPlayerSprite(p.player1, VehicleType::Cube);
-    setPlayerSprite(p.player2, VehicleType::Cube);
+    setPlayerSprite(player1, VehicleType::Cube);
+    setPlayerSprite(player2, VehicleType::Cube);
     updateUpsideDownState();
 
-    p.player1->CCNode::setScaleX(1.f);
-    p.player1->CCNode::setScaleY(1.f);
-    p.player2->CCNode::setScaleX(1.f);
-    p.player2->CCNode::setScaleY(1.f);
+    player1->CCNode::setScaleX(1.f);
+    player1->CCNode::setScaleY(1.f);
+    player2->CCNode::setScaleX(1.f);
+    player2->CCNode::setScaleY(1.f);
 
-    p.player1->setPosition({0, 105});
-    p.player2->setPosition({0, 105});
-    p.player1->setVisible(true);
-    p.player2->setVisible(false);
+    player1->setPosition({0, 105});
+    player2->setPosition({0, 105});
+    player1->setVisible(true);
+    player2->setVisible(false);
 
-    if (p.isSpectating) {
+    if (isSpectating) {
         PlayLayer::get()->m_player1->releaseAllButtons();
         PlayLayer::get()->m_player2->releaseAllButtons();
     }
@@ -298,20 +439,10 @@ void Player::loadReplay(Replay replay) {
     icons = replay.info.icons;
     PlayerColors colors = replay.info.colors;
     info = replay.info;
+    isRacing = true;
     updateColors();
-    updateUI();
-}
-
-void Player::loadGhost(Replay replay, int selected) {
-    Player& p = get();
-
-    p.currentAction = 0;
-    p.currentRace = selected;
-    p.isRacing = true;
-
-    if (p.player1) p.player1->setVisible(true);
-
-    p.loadReplay(replay);
+    PlayerManager::get().updateUI();
+    currentAction = 0;
     resetState();
     handleActions();
 }
@@ -345,66 +476,61 @@ std::pair<cocos2d::CCPoint, cocos2d::CCPoint> Player::getLatestPositions() {
 }
 
 void Player::handleActions() {
-    Player& p = get();
 
-    if (!p.player1 || !p.player2) return;
+    if (!player1 || !player2) return;
 
-    while (p.currentAction < p.actions.size() && p.actions[p.currentAction].frame <= p.currentFrame) {
-        Action action = p.actions[p.currentAction];
+    while (currentAction < actions.size() && actions[currentAction].frame <= PlayerManager::getCurrentFrame()) {
+        Action action = actions[currentAction];
 
         switch (action.type) {
-            case ActionType::Position: p.handlePositionAction(action); break;
-            case ActionType::Sideways: p.handleSidewaysAction(action); break;
-            case ActionType::Vehicle: p.handleVehicleAction(action); break;
-            case ActionType::Dual: p.handleDualAction(action); break;
-            case ActionType::Flip: p.handleFlipAction(action); break;
-            case ActionType::Mini: p.handleMiniAction(action); break;
-            case ActionType::Animation: p.handleAnimationAction(action); break;
-            case ActionType::Effect: p.handleEffectAction(action); break;
-            case ActionType::Input: p.handleInputAction(action); break;
-            case ActionType::Reset: p.handleResetAction(action); break;
+            case ActionType::Position: handlePositionAction(action); break;
+            case ActionType::Sideways: handleSidewaysAction(action); break;
+            case ActionType::Vehicle: handleVehicleAction(action); break;
+            case ActionType::Dual: handleDualAction(action); break;
+            case ActionType::Flip: handleFlipAction(action); break;
+            case ActionType::Mini: handleMiniAction(action); break;
+            case ActionType::Animation: handleAnimationAction(action); break;
+            case ActionType::Effect: handleEffectAction(action); break;
+            case ActionType::Input: handleInputAction(action); break;
+            case ActionType::Reset: handleResetAction(action); break;
         }
 			
         if (action.type != ActionType::Position)
             updateUpsideDownState();
-        else if (p.isSpectating) {
+        else if (isSpectating) {
             PlayLayer* pl = PlayLayer::get();
-            pl->m_player1->setPosition(p.player1->getPosition());
-            if (pl->m_gameState.m_isDualMode)
-                pl->m_player2->setPosition(p.player2->getPosition());
 
-            p.updatePlayer = true;
-            p.spectated = true;
+            player1->setPosition(pl->m_player1->getPosition());
+            player1->setRotation(pl->m_player1->getRotation());
+            if (pl->m_gameState.m_isDualMode) {
+                player2->setPosition(pl->m_player2->getPosition());
+                player2->setRotation(pl->m_player2->getRotation());
+            }
+
+            PlayerManager::getUpdatePlayer() = true;
+            PlayerManager::getSpectated() = true;
         }
 
-        p.currentAction++;
+        currentAction++;
 	}
 }
 
 void Player::handlePlaying(GJBaseGameLayer* bgl, int frame) {
-    Player& p = get();
-    p.currentFrame = frame;
+    if (!isRacing && !isSpectating) return updateCamera();
+    if (actions.empty() || PlayerManager::getDisabled()) return updateCamera();
+    if (isSpectating && PlayerManager::getShouldRestart()) return;
 
-    if (!p.isRacing && !p.isSpectating) return updateCamera();
-    if (p.actions.empty() || p.disabled) return updateCamera();
-    if (p.isSpectating && p.shouldRestart) return;
+    if (isSpectating && frame >= static_cast<int>(info.time * 240.f) - 1)
+        PlayerManager::stopSpectating();
 
-    if (p.isSpectating && frame >= static_cast<int>(p.info.time * 240.f) - 1) {
-        // std::pair<cocos2d::CCPoint, cocos2d::CCPoint> pos = p.getLatestPositions();
-        // PlayLayer* pl = PlayLayer::get();
-        // pl->m_player1->setPosition(pos.first);
-        // pl->m_player2->setPosition(pos.second);
-        stopSpectating();
-    }
-
-    if (!p.player1 || !p.player2) {
-		p.player1 = static_cast<PlayerObject*>(bgl->m_objectLayer->getChildByID("ghost-player1"_spr));
-		p.player2 = static_cast<PlayerObject*>(bgl->m_objectLayer->getChildByID("ghost-player2"_spr));
+    if (!player1 || !player2) {
+		player1 = static_cast<PlayerObject*>(bgl->m_objectLayer->getChildByID("ghost-player1"_spr));
+		player2 = static_cast<PlayerObject*>(bgl->m_objectLayer->getChildByID("ghost-player2"_spr));
     } 
 
 	handleActions();
 
-    if (p.isSpectating) {
+    if (isSpectating) {
         PlayLayer* pl = PlayLayer::get();
         pl->m_player1->setVisible(false);
         pl->m_player2->setVisible(false);
@@ -413,66 +539,76 @@ void Player::handlePlaying(GJBaseGameLayer* bgl, int frame) {
     updateCamera();
 }
 
-void Player::startSpectating(Replay replay, int spectate) {
-    stopRacing();
-    Player& p = get();
-    p.currentAction = 0;
-    p.currentSpectate = spectate;
-    p.currentRace = 0;
-    p.isRacing = false;
-    p.isSpectating = true;
-    p.shouldRestart = true;
-    p.canReset = false;
-    p.loadReplay(replay);
-    if (p.player1) p.player1->setVisible(true);
+void Player::startSpectating(Replay replay) {
+    PlayerManager::getIsSpectating() = true;
+    PlayerManager::getCurrentSpectate() = replay.info.time;
+    PlayerManager::getShouldRestart() = true;
+    PlayerManager::getCanReset() = false;
+    loadReplay(replay);
+    if (player1) player1->setVisible(true);
+    updateOpacity(true);
+    updateOpacity(false);
+    currentAction = 0;
+    isSpectating = true;
+    isRacing = false;
 }
 
 void Player::stopRacing() {
-    Player& p = get();
-    Player::resetState();
-    if (p.player1) p.player1->setVisible(false);
-    if (p.player2) p.player2->setVisible(false);
-    p.actions.clear();
-    p.isRacing = false;
-    p.currentRace = 0;
-    updateUI();
+    resetState();
+
+    if (player1) player1->removeFromParentAndCleanup(true);
+    if (player2) player2->removeFromParentAndCleanup(true);
+    if (icon1) icon1->removeFromParentAndCleanup(true);
+    if (icon2) icon2->removeFromParentAndCleanup(true);
+
+    player1 = nullptr;
+    player2 = nullptr;
+    icon1 = nullptr;
+    icon2 = nullptr;
+
+    actions.clear();
+    isRacing = false;
+    PlayerManager::getCurrentRace() = 0;
+    PlayerManager::get().updateUI();
 }
 
 void Player::stopSpectating() {
-    Player& p = get();
-    p.actions.clear();
-    p.currentAction = 0;
-    p.currentSpectate = 0;
-    p.currentRace = 0;
-    p.spectatorInput = false;
-    p.isRacing = false;
-    p.isSpectating = false;
-    p.canReset = false;
-    p.shouldRestart = true;
-
-    if (!p.player1 || !p.player2) return;
-
-    p.player1->setVisible(false);
-    p.player2->setVisible(false);
+    if (!isSpectating) return;
+    actions.clear();
+    currentAction = 0;
+    PlayerManager::getIsSpectating() = false;
+    PlayerManager::getCurrentSpectate() = 0.f;
+    PlayerManager::getSpectatorInput() = false;
+    isRacing = false;
+    isSpectating = false;
+    PlayerManager::getCanReset() = false;
+    PlayerManager::getShouldRestart() = true;
+    
     PlayLayer::get()->m_player1->setVisible(true);
     PlayLayer::get()->m_player1->releaseAllButtons();
     PlayLayer::get()->m_player2->releaseAllButtons();
-    updateUI();
+    PlayerManager::get().updateUI();
+
+    if (!player1 || !player2) return;
+
+    player1->setVisible(false);
+    player2->setVisible(false);
+    updateOpacity(false);
+    updateOpacity(true);
 }
 
 void Player::updateUpsideDownState() {
-    Player& p = get();
-    if (!p.player1 || !p.player2) return;
+    if (!player1 || !player2) return;
 
-    if (p.upsideDown1 && !nonInvertedVehicles.contains(p.currentVehicle1))
-        p.player1->CCNode::setScaleY(-1 * abs(p.player1->getScaleY()));
+    if (upsideDown1 && !nonInvertedVehicles.contains(currentVehicle1))
+        player1->CCNode::setScaleY(-1 * abs(player1->getScaleY()));
     else
-        p.player1->CCNode::setScaleY(abs(p.player1->getScaleY()));
+        player1->CCNode::setScaleY(abs(player1->getScaleY()));
 
-    if (p.upsideDown2 && !nonInvertedVehicles.contains(p.currentVehicle2))
-        p.player2->CCNode::setScaleY(-1 * abs(p.player2->getScaleY()));
+    if (upsideDown2 && !nonInvertedVehicles.contains(currentVehicle2))
+        player2->CCNode::setScaleY(-1 * abs(player2->getScaleY()));
     else
-        p.player2->CCNode::setScaleY(abs(p.player2->getScaleY()));
+        player2->CCNode::setScaleY(abs(player2->getScaleY()));
 }
 
 void Player::setPlayerColors(PlayerObject* player, bool player2, int color1ID, int color2ID, int glowColorID, bool glowEnabled) {
@@ -520,8 +656,9 @@ void Player::setPlayerIconColors(SimplePlayer* icon, bool player2, int color1ID,
 
 void Player::setPlayerSprite(PlayerObject* player, VehicleType vehicle) {
     if (getActions().empty()) return;
+    if (!player) return;
 
-    int id = get().icons.at(vehicle);
+    int id = icons.at(vehicle);
 
     switch (vehicle) {
         case VehicleType::Cube: 
@@ -544,7 +681,7 @@ void Player::setPlayerSprite(PlayerObject* player, VehicleType vehicle) {
     }
 
     IconType iconType = IconType::Cube;
-    SimplePlayer* icon = player == get().player2 ? get().icon2 : get().icon1;
+    SimplePlayer* icon = player == player2 ? icon2 : icon1;
     if (!icon) return;
     switch (vehicle) {
         case VehicleType::Ship: iconType = IconType::Jetpack; break;
@@ -559,7 +696,7 @@ void Player::setPlayerSprite(PlayerObject* player, VehicleType vehicle) {
     if (CCNode* cube = icon->getChildByID("cube"_spr)) {
         static_cast<SimplePlayer*>(cube)->setVisible(iconType == IconType::Jetpack);
         static_cast<SimplePlayer*>(cube)->setOpacity(220);
-        static_cast<SimplePlayer*>(cube)->updatePlayerFrame(get().icons.at(VehicleType::Cube), IconType::Cube);
+        static_cast<SimplePlayer*>(cube)->updatePlayerFrame(icons.at(VehicleType::Cube), IconType::Cube);
     }
 
     icon->updatePlayerFrame(id, iconType);
@@ -570,7 +707,7 @@ void Player::setPlayerSprite(PlayerObject* player, VehicleType vehicle) {
     else
         icon->setOpacity(220);
 
-    updateOpacity(player == get().player2);
+    updateOpacity(player == player2);
 }
 
 void Player::setPlayerScale(PlayerObject* player, float scale, float x, float y) {
@@ -582,14 +719,12 @@ void Player::setPlayerScale(PlayerObject* player, float scale, float x, float y)
 }
 
 void Player::playCompleteEffect() {
-    Player& p = get();
-    
-    if (!p.player1 || !p.player2) return;
+    if (!player1 || !player2) return;
 
-    if (p.player1->isVisible()) p.player1->playCompleteEffect(false, false);
-    if (p.player2->isVisible()) p.player2->playCompleteEffect(false, false);
-    p.player1->setVisible(false);
-    p.player2->setVisible(false);
+    if (player1->isVisible()) player1->playCompleteEffect(false, false);
+    if (player2->isVisible()) player2->playCompleteEffect(false, false);
+    player1->setVisible(false);
+    player2->setVisible(false);
 }
 
 void Player::playSpawnEffect(PlayerObject* player) {
@@ -602,22 +737,22 @@ void Player::playSpawnEffect(PlayerObject* player) {
 }
 
 void Player::handleCompletion() {
-    Player& p = get();
 
-    if (p.completedLevel) return;
-    p.completedLevel = true;
+    if (completedLevel) return;
+    completedLevel = true;
 
     playCompleteEffect();
     
-    if (p.isSpectating) {
+    if (isSpectating || PlayerManager::getSpectated()) {
         PlayLayer* pl = PlayLayer::get();
         pl->m_player1->setVisible(true);
         pl->m_player2->setVisible(pl->m_gameState.m_isDualMode);
-        Player::stopSpectating();
+        PlayerManager::stopSpectating();
     }
 }
 
 void Player::handlePositionAction(Action action) {
+    if (isSpectating) return;
     PositionData pos = std::get<PositionData>(action.data);
 
     if (pos.p1.position.x != 0.f)
@@ -743,7 +878,7 @@ void Player::handleEffectAction(Action action) {
     switch(data.effect) {
         case EffectType::Death: {
             player->playDeathEffect();
-            if (get().isSpectating) {
+            if (isSpectating) {
                 PlayLayer* pl = PlayLayer::get();
                 pl->PlayLayer::destroyPlayer(pl->m_player1, pl->m_player1);
             }
@@ -755,10 +890,9 @@ void Player::handleEffectAction(Action action) {
             if (player->isVisible()) player->playCompleteEffect(false, false); 
             #endif
 
-            Player& p = get();
-            p.ghostCompletedLevel = true;
-            if (p.icon1) p.icon1->setVisible(false);
-            if (p.icon2) p.icon2->setVisible(false);
+            ghostCompletedLevel = true;
+            if (icon1) icon1->setVisible(false);
+            if (icon2) icon2->setVisible(false);
 
             break;
         }
@@ -766,8 +900,7 @@ void Player::handleEffectAction(Action action) {
 }   
 
 void Player::handleInputAction(Action action) {
-    Player& p = get();
-    if (!p.isSpectating) return;
+    if (!isSpectating) return;
 
     PlayLayer* pl = PlayLayer::get();
     if (!pl) return;
@@ -776,19 +909,19 @@ void Player::handleInputAction(Action action) {
     PlayerObject* player = data.player2 ? pl->m_player2 : pl->m_player1;
     PlayerButton btn = static_cast<PlayerButton>(data.button);
 
-    p.spectatorInput = true;
+    PlayerManager::getSpectatorInput() = true;
     data.down ? player->pushButton(btn) : player->releaseButton(btn);
-    p.updatePlayer = true;
+    PlayerManager::getUpdatePlayer() = true;
     Loader::get()->queueInMainThread([] {
-        Player::get().spectatorInput = false;
+        PlayerManager::getSpectatorInput() = false;
     });
 }
 
 void Player::handleResetAction(Action action) {
-    if (!get().isSpectating) return;
+    if (!isSpectating) return;
     if (PlayLayer* pl = PlayLayer::get()) {
-        get().canReset = true;
+        PlayerManager::getCanReset() = true;
         pl->resetLevel();
-        get().canReset = false;
+        PlayerManager::getCanReset() = false;
     }
 }

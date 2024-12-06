@@ -24,13 +24,13 @@ public:
 class GhostCell : public CCNode {
 
 	geode::Popup<int>* loadLayer = nullptr;
-	ReplayInfo info;
 	std::filesystem::path path;
 	std::string time;
 	EventListener<Task<Result<std::filesystem::path>>> listener;
 
 public:
 
+	ReplayInfo info;
 	int rank = 0;
 	CCMenu* menu = nullptr;
 	CCMenuItemToggler* toggler = nullptr;

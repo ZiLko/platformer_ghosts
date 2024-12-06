@@ -115,7 +115,17 @@ struct ReplayInfo {
 	std::string username = "";
 	std::string levelName = "";
 	std::string date = "";
-	std::unordered_map<VehicleType, int> icons;
+	std::unordered_map<VehicleType, int> icons = {
+		{VehicleType::Cube, 1},
+		{VehicleType::Ship, 1},
+		{VehicleType::Ball, 1},
+		{VehicleType::Ufo, 1},
+		{VehicleType::Wave, 1},
+		{VehicleType::Robot, 1},
+		{VehicleType::Spider, 1},
+		{VehicleType::Swing, 1},
+		{VehicleType::Cube, 1}
+	};
 	PlayerColors colors;
 };
 

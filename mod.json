@@ -10,7 +10,7 @@
 	],
 	"id": "zilko.platformer_ghosts",
 	"name": "Platformer Ghosts",
-	"version": "v1.1.3",
+	"version": "v1.2.0",
 	"developer": "Zilko",
 	"description": "Adds ghosts to platformer mode.",
 	"repository": "https://github.com/ZiLko/platformer_ghosts",
@@ -40,6 +40,20 @@
 			"name": "Disable Ghost Recording",
 			"type": "bool",
 			"default": false
+		},
+		"load_all_ghosts": {
+			"name": "Race All Ghosts",
+			"description": "Always race all ghosts when opening a level.",
+			"type": "bool",
+			"default": false
+		},
+		"load_ghosts": {
+			"name": "Ghosts to race",
+			"description": "Amount of ghosts to race if available when opening a level.",
+			"type": "int",
+			"default": 15,
+			"max": 255,
+			"min": 1
 		},
 		"smoothness": {
 			"name": "Ghost Smoothness",

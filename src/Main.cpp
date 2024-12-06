@@ -15,28 +15,28 @@ $execute {
         Recorder::get().fps = value;
     });
     geode::listenForSettingChanges("p1_opacity", +[](int64_t value) {
-        Player::updateOpacity(false);
+        PlayerManager::updateOpacity(false);
     });
     geode::listenForSettingChanges("p2_opacity", +[](int64_t value) {
-        Player::updateOpacity(true);
+        PlayerManager::updateOpacity(true);
     }); 
     geode::listenForSettingChanges("no_colors", +[](bool value) {
-        Player::updateColors();
+        PlayerManager::updateColors();
     });
     geode::listenForSettingChanges("player_disabled", +[](bool value) {
-        Player::updateDisabled();
+        PlayerManager::updateDisabled();
     });
     geode::listenForSettingChanges("recorder_disabled", +[](bool value) {
         Recorder::get().disabled = value;
     });
     geode::listenForSettingChanges("show_ui", +[](bool value) {
-        Player::updateUI();
+        PlayerManager::get().updateUI();
     });
     geode::listenForSettingChanges("off_screen_indicators", +[](bool value) {
-        Player::updateCamera();
+        PlayerManager::updateCamera();
     }); 
 
-    Player::get().disabled = Mod::get()->getSettingValue<bool>("player_disabled");
+    PlayerManager::get().disabled = Mod::get()->getSettingValue<bool>("player_disabled");
     Recorder::get().disabled = Mod::get()->getSettingValue<bool>("recorder_disabled");
     Recorder::get().fps = Mod::get()->getSettingValue<int64_t>("smoothness");
 };
@@ -74,12 +74,14 @@ class $modify(GameLayer, GJBaseGameLayer) {
 
 		if (m_gameState.m_currentProgress <= 1) {
             Recorder::resetState(m_levelSettings->m_platformerMode && !m_isTestMode && !m_isPracticeMode);
-            Player::resetState();
+            PlayerManager::resetState();
             Recorder::get().totalFrame = 0;
-        } else if (Player::get().shouldRestart) {
+            PlayerManager::getSpectated() = false;
+        } else if (PlayerManager::getShouldRestart() && !m_levelEndAnimationStarted) {
             if (pl->m_isPracticeMode) pl->togglePracticeMode(false);
-            Loader::get()->queueInMainThread([] {
-                PlayLayer::get()->resetLevelFromStart();
+            Loader::get()->queueInMainThread([this] {
+                if (!m_levelEndAnimationStarted)
+                    PlayLayer::get()->resetLevelFromStart();
             });
         }
 
@@ -89,11 +91,11 @@ class $modify(GameLayer, GJBaseGameLayer) {
 
         Recorder::get().previousFrame = attemptFrame;
 
-        if (Player::get().isSpectating && pl->m_levelEndAnimationStarted)
-            Player::handleCompletion();
+        if (PlayerManager::getIsSpectating() && pl->m_levelEndAnimationStarted)
+            PlayerManager::handleCompletion();
 
         if (!Recorder::get().levelComplete && pl->m_levelEndAnimationStarted) {
-            Player::playCompleteEffect();
+            PlayerManager::playCompleteEffect();
 
             Loader::get()->queueInMainThread([this] {
                 cocos2d::CCPoint pos1 = m_player1->getPosition();
@@ -117,7 +119,7 @@ class $modify(GameLayer, GJBaseGameLayer) {
 		if (shouldReturn(this)) return;
 
         Recorder::handleRecording(pl, Recorder::get().totalFrame);
-        Player::handlePlaying(this, Recorder::get().totalFrame);
+        PlayerManager::handlePlaying(this, Recorder::get().totalFrame);
     }
 
 };
@@ -131,11 +133,6 @@ class $modify(PlayerObject) {
             log::warn("PlayerObject::playDeathEffect hook priority fail xD.");
     }
 
-    void update(float dt) {
-        if (Player::canUpdatePlayer())
-            PlayerObject::update(dt);
-    }
-
     bool shouldReturnPlayer() {
         PlayLayer* pl = PlayLayer::get();
         if (!pl) return true;
@@ -147,7 +144,7 @@ class $modify(PlayerObject) {
     }
 
     bool pushButton(PlayerButton btn) {
-        if (!Player::canClick()) return false;
+        if (!PlayerManager::canClick()) return false;
         if (!PlayerObject::pushButton(btn)) return false;
 
         if (shouldReturnPlayer()) return true;
@@ -159,7 +156,7 @@ class $modify(PlayerObject) {
     }
 
     bool releaseButton(PlayerButton btn) {
-        if (!Player::canClick()) return false;
+        if (!PlayerManager::canClick()) return false;
         if (!PlayerObject::releaseButton(btn)) return false;
 
         if (shouldReturnPlayer()) return true;
@@ -200,7 +197,7 @@ class $modify(PlayerObject) {
     }
 
     void activateStreak() {
-        if (!Player::get().isSpectating)
+        if (!PlayerManager::getIsSpectating())
             PlayerObject::activateStreak();
     }
 
@@ -209,57 +206,56 @@ class $modify(PlayerObject) {
 class $modify(PlayLayer) {
 
     void onQuit() {
+        PlayerManager::get().uiIcon = nullptr;
+        PlayerManager::get().uiTime = nullptr;
+        PlayerManager::get().uiName = nullptr;
+        PlayerManager::resetState();
+        PlayerManager::stopSpectating();
         PlayLayer::onQuit();
-        Player::get().uiIcon = nullptr;
     }
 
 	void setupHasCompleted() {
 		PlayLayer::setupHasCompleted();
-        Player::clear();
+        PlayerManager::clear();
 
         Recorder::resetState(false);
-        Player::resetState();
+        PlayerManager::resetState();
 
-        if (Player::get().isSpectating) Player::stopSpectating();
+        if (PlayerManager::getIsSpectating()) PlayerManager::stopSpectating();
 
         if (!m_levelSettings->m_platformerMode) return;
 
         Loader::get()->queueInMainThread([this] {
-            Player::setup(this);
+            PlayerManager::get().setup(this);
         });
 	}
 
     void resetLevel() {
-        Player& p = Player::get();
-
-        if (p.canReset || !p.isSpectating || p.ghostCompletedLevel || m_levelEndAnimationStarted || p.shouldRestart)
+        if (PlayerManager::getCanReset() || !PlayerManager::getIsSpectating() || PlayerManager::getShouldRestart() || m_levelEndAnimationStarted)
             PlayLayer::resetLevel();
 
         if (Recorder::get().disabled) return;
 
-        p.shouldRestart = false;
+        PlayerManager::getShouldRestart() = false;
         
         Recorder::recordResetAction(Recorder::get().totalFrame);
     }
 
 	void levelComplete() {
-        Player& p = Player::get();
-
         bool wasTestMode = m_isTestMode;
-        if (p.spectated) m_isTestMode = true;
+        if (PlayerManager::getSpectated()) m_isTestMode = true;
 		PlayLayer::levelComplete();
         m_isTestMode = wasTestMode;
 
-        if (p.icon1) p.icon1->setVisible(false);
-        if (p.icon2) p.icon2->setVisible(false);
+        PlayerManager::hideIcons();
 
         Recorder& r = Recorder::get();
-        r.compareTime = p.info.time;
+        r.compareTime = PlayerManager::getTime();
         r.time = 0.f;
-        if (!p.isRacing)
+        if (!PlayerManager::getIsRacing())
             r.compareTime = RecordsManager::getBestCompletion(EditorIDs::getID(PlayLayer::get()->m_level)).info.time;
 
-		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || p.spectated) return;
+		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || PlayerManager::getSpectated()) return;
 
         int frame = Recorder::get().totalFrame;
         float time = frame / 240.f;
@@ -316,15 +312,6 @@ class $modify(PauseLayer) {
         menu->updateLayout();
     }
 
-    void onQuit(CCObject * sender) {
-        PauseLayer::onQuit(sender);
-        Player::get().uiIcon = nullptr;
-    }
-
-    void goEdit() {
-        PauseLayer::goEdit();
-        Player::get().uiIcon = nullptr;
-    }
 };
 
 class $modify(EndLevelLayer) {
@@ -332,7 +319,7 @@ class $modify(EndLevelLayer) {
     void addTime() {
         float time = Recorder::get().time;
         float compareTime = Recorder::get().compareTime;
-        if (compareTime == 0.f || time == 0.f || Player::get().spectated) return;
+        if (compareTime == 0.f || time == 0.f || PlayerManager::getSpectated()) return;
 
         CCLabelBMFont* timeLabel = nullptr;
         if (Loader::get()->isModLoaded("geode.node-ids")) {

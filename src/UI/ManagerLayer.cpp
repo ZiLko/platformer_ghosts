@@ -61,14 +61,17 @@ void ManagerLayer::deleteSelected(CCObject*) {
 		"Cancel", "Yes",
 		[this, amount](auto, bool btn2) {
 			if (!btn2) return;
-			std::unordered_set<int> deletedRanks;
+			std::vector<float> deletedTimes;
 
 			for (GhostCell* cell : selectedCells) {
-				deletedRanks.insert(cell->rank);
+				deletedTimes.push_back(cell->info.time);
 				cell->deleteCell(false);
 			}
-			if (deletedRanks.contains(Player::get().currentRace))
-				Player::stopRacing();
+
+			for (float time : deletedTimes) {
+				if (PlayerManager::containsTime(time))
+					PlayerManager::removePlayer(PlayerManager::get().times.at(time));
+			}
 
 			this->reloadList(amount);
 			Notification::create("Ghosts Deleted", NotificationIcon::Success)->show();
@@ -702,10 +705,10 @@ void GhostCell::onDelete(CCObject*) {
 void GhostCell::deleteCell(bool reload) {
 	if (!std::filesystem::remove_all(path)) return;
 	if (reload) {
-		if (rank == Player::get().currentRace)
-			Player::stopRacing();
-		if (rank == Player::get().currentSpectate)
-			Player::stopSpectating();
+		if (PlayerManager::containsTime(info.time))
+			PlayerManager::removePlayer(PlayerManager::get().times.at(info.time));
+		if (info.time == PlayerManager::getCurrentSpectate())
+			PlayerManager::stopSpectating();
 
 		static_cast<ManagerLayer*>(loadLayer)->reloadList();
 		Notification::create("Ghost Deleted", NotificationIcon::Success)->show();

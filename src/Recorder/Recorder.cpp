@@ -50,6 +50,13 @@ void Recorder::resetState(bool shouldRecord) {
     r.goingLeft1 = pl->m_player1->m_isGoingLeft;
     r.goingLeft2 = pl->m_player2->m_isGoingLeft;
 
+    if (pl->m_player1->m_holdingButtons[1]) handleInput(1, 1, true, false);
+    if (pl->m_player1->m_holdingButtons[2]) handleInput(1, 2, true, false);
+    if (pl->m_player1->m_holdingButtons[3]) handleInput(1, 3, true, false);
+    if (pl->m_player2->m_holdingButtons[1]) handleInput(1, 1, true, true);
+    if (pl->m_player2->m_holdingButtons[2]) handleInput(1, 2, true, true);
+    if (pl->m_player2->m_holdingButtons[3]) handleInput(1, 3, true, true);
+
     recordDualAction(pl->m_gameState.m_isDualMode, 1);
     for (int i = 0; i < 2; i++) {
         bool player2 = i == 1;
@@ -61,7 +68,7 @@ void Recorder::resetState(bool shouldRecord) {
 }
 
 void Recorder::handleRecording(PlayLayer* pl, int frame) {
-    if (Player::get().isSpectating) return;
+    if (PlayerManager::getIsSpectating()) return;
     
     Recorder& r = get();
     if (r.disabled) return;
@@ -76,7 +83,7 @@ void Recorder::handleRecording(PlayLayer* pl, int frame) {
 
     int m = static_cast<int>(240.f / r.fps);
     if (frame % m == 0 && diffPos)
-        recordPositionAction(Player::get().currentFrame, false);
+        recordPositionAction(PlayerManager::getCurrentFrame(), false);
 
     if (r.goingLeft1 != p1->m_isGoingLeft)
         recordFlipAction(frame, false, p1->m_isGoingLeft, false);
@@ -217,7 +224,7 @@ void Recorder::handleEffect(int frame, EffectType effect, bool player2) {
     if (effect != EffectType::Complete) return;
 
     Loader::get()->queueInMainThread([] {
-        Recorder::recordPositionAction(Player::get().currentFrame, true);
+        Recorder::recordPositionAction(PlayerManager::getCurrentFrame(), true);
     });
 }
 
@@ -227,7 +234,7 @@ void Recorder::recordPositionAction(int frame, bool rot = false) {
 
     Action action;
     action.type = ActionType::Position;
-    action.frame = Player::get().currentFrame;
+    action.frame = PlayerManager::getCurrentFrame();
 
     cocos2d::CCPoint pos1 = pl->m_player1->getPosition();
     cocos2d::CCPoint pos2 = pl->m_player2->getPosition();
@@ -254,7 +261,7 @@ void Recorder::recordVehicleAction(VehicleType vehicle, int frame, bool player2)
     get().actions.push_back(action);
 
     Loader::get()->queueInMainThread([] {
-        Recorder::recordPositionAction(Player::get().currentFrame, true);
+        Recorder::recordPositionAction(PlayerManager::getCurrentFrame(), true);
     });
 }
 
@@ -344,7 +351,7 @@ void Recorder::recordResetAction(int frame) {
 
     Loader::get()->queueInMainThread([] {
         Loader::get()->queueInMainThread([] {
-            Recorder::recordPositionAction(Player::get().currentFrame, true);
+            Recorder::recordPositionAction(PlayerManager::getCurrentFrame(), true);
         });
     });
 }

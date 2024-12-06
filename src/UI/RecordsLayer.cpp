@@ -95,19 +95,20 @@ void RecordsLayer::addList() {
                 personalBest = i;
         }
 
-        RecordCell* cell = RecordCell::create(replays[i], i + 1, static_cast<geode::Popup<>*>(this), false);
+        RecordCell* cell = RecordCell::create(replays[i], i + 1, static_cast<geode::Popup<>*>(this), xd);
         cellsArray->addObject(cell);
         cells.push_back(cell);
 
-        if (Player::get().currentRace == i + 1) {
-            cell->raceToggle->toggle(true);
-            selectedRace = cell;
+        if (PlayerManager::containsTime(replays[i].first.time)) {
+            if (PlayerManager::getCurrentSpectate() == replays[i].first.time) {
+                cell->spectateToggle->toggle(true);
+                selectedSpectate = cell;
+            } else {
+                cell->raceToggle->toggle(true);
+                selectedRaces.push_back(cell);
+            }
         }
-
-        if (Player::get().currentSpectate == i + 1) {
-            cell->spectateToggle->toggle(true);
-            selectedSpectate = cell;
-        }
+        
     }
 
     noGhostsLabel->setVisible(replays.empty());
@@ -312,56 +313,48 @@ bool RecordCell::init(std::pair<ReplayInfo, std::filesystem::path> replay, int r
 }
 
 void RecordCell::onRace(CCObject*) {
-    if (raceToggle->isToggled()) {
-        Player::stopRacing();
-    } else {
-        if (!recordsLayer) return;
-        RecordsLayer* layer = static_cast<RecordsLayer*>(recordsLayer);
+    bool toggle = !raceToggle->isToggled(); 
 
-        if (layer->selectedRace && layer->selectedRace != this)
-            layer->selectedRace->raceToggle->toggle(false);
+    if (!toggle && PlayerManager::containsTime(info.time)) {
+        PlayerManager::removePlayer(PlayerManager::get().times.at(info.time));
+        return;
+    } else if (!toggle) return;
 
-        if (layer->selectedSpectate) {
-            layer->selectedSpectate->spectateToggle->toggle(false);
-            layer->selectedSpectate = nullptr;
-            Player::stopSpectating();
-        }
-
-        layer->selectedRace = this;
-        Replay replay;
-        replay.info = info;
-        replay.actions = RecordsManager::getCompletionActions(path);
-
-        Player::loadGhost(replay, rank);
+    if (PlayerManager::getCurrentSpectate() == info.time) {
+        onSpectate(nullptr);
+        spectateToggle->toggle(false);
+        raceToggle->toggle(false);
     }
+    Loader::get()->queueInMainThread([this] {
+        Replay replay = {
+            info,
+            RecordsManager::getCompletionActions(path)
+        };
+        PlayerManager::addPlayer(replay, PlayLayer::get());
+    });
 }
 
 void RecordCell::onSpectate(CCObject* obj) {
-    PlayLayer* pl = PlayLayer::get();
+    bool toggle = !spectateToggle->isToggled();
 
-    if (!pl) return;
-    if (!recordsLayer) return;
+    if (toggle) {
+        if (raceToggle->isToggled()) raceToggle->toggle(false);
+        if (PlayerManager::containsTime(info.time)) {
+            Replay replay = {
+                info,
+                RecordsManager::getCompletionActions(path)
+            };
 
-    CCMenuItemToggler* toggle = static_cast<CCMenuItemToggler*>(obj);
-    RecordsLayer* layer = static_cast<RecordsLayer*>(recordsLayer);
-
-    if (layer->selectedSpectate && layer->selectedSpectate != this) {
-        layer->selectedSpectate->spectateToggle->toggle(false);
-        Player::stopSpectating();
+            Player player = PlayerManager::get().times.at(info.time);
+            for (int i = 0; i < PlayerManager::get().players.size(); i++) {
+                if (PlayerManager::get().players[i] == player) {
+                    PlayerManager::get().players[i].startSpectating(replay);
+                    break;
+                }
+            }
+        }
+    } else {
+        PlayerManager::stopSpectating();
+        raceToggle->toggle(true);
     }
-
-    if (!toggle->isToggled()) {
-        layer->selectedSpectate = this;
-        if (pl->m_isTestMode) return;
-
-        Replay replay;
-        replay.info = info;
-        replay.actions = RecordsManager::getCompletionActions(path);
-        Player::startSpectating(replay, rank);
-
-        if (!layer->selectedRace) return;
-        layer->selectedRace->raceToggle->toggle(false);
-        layer->selectedRace = nullptr;
-    } else
-        Player::stopSpectating();
 }

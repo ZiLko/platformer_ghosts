@@ -20,10 +20,6 @@ void RecordsManager::saveJSON(nlohmann::json json, std::filesystem::path path) {
     }
 }
 
-void RecordsManager::exportGhost(std::pair<ReplayInfo, std::filesystem::path> ghost, std::filesystem::path path) {
-    
-}
-
 std::string RecordsManager::getFormattedTime(float time) {
     std::string ret = "";
     int hours = static_cast<int>(time / 3600);
@@ -90,24 +86,25 @@ std::vector<GhostLevel> RecordsManager::getSavedLevels() {
     return ret;
 }
 
-void RecordsManager::handleCompletion(int levelId, float time, std::vector<Action> actions) {		
-    saveCompletion(Mod::get()->getSaveDir() / std::to_string(levelId), time, actions);
-    Player& p = Player::get();
+void RecordsManager::handleCompletion(int levelId, float time, std::vector<Action> actions) {
+    std::filesystem::path saveFolder = saveCompletion(Mod::get()->getSaveDir() / std::to_string(levelId), time, actions);
+    int amount = Mod::get()->getSettingValue<int64_t>("load_ghosts");
     
-    if (p.currentRace == 1 || p.currentRace == 0)
-        Player::loadBestCompletion();
-    else if (time < p.info.time) p.currentRace++;
+    if (PlayerManager::get().players.size() < amount || Mod::get()->getSettingValue<bool>("load_all_ghosts")) {
+        Replay replay = {
+            getCompletionInfo(saveFolder / "info.json"),
+            getCompletionActions(saveFolder / "actions.json")
+        };
+        PlayerManager::addPlayer(replay, PlayLayer::get());
+    }
 
     std::vector<std::pair<ReplayInfo, std::filesystem::path>> ghosts = getLevelCompletions(levelId);
     if (ghosts.empty()) return;
 
     if (ghosts.size() > Mod::get()->getSettingValue<int64_t>("max_ghosts")) {
 		std::filesystem::remove_all(ghosts.back().second.parent_path());
-        ghosts.pop_back();
-        if (p.currentRace == ghosts.size()) {
-            p.isRacing = true;
-            p.loadReplay({ ghosts.back().first, getCompletionActions(ghosts.back().second) }); 
-        }
+        if (PlayerManager::get().times.contains(ghosts.back().first.time))
+            PlayerManager::removePlayer(PlayerManager::get().times.at(ghosts.back().first.time));
     }
 }
 
@@ -185,7 +182,7 @@ std::vector<Action> RecordsManager::getCompletionActions(std::filesystem::path p
     return actions;
 }
 
-void RecordsManager::saveCompletion(std::filesystem::path folder, float time, std::vector<Action> actions) {
+std::filesystem::path RecordsManager::saveCompletion(std::filesystem::path folder, float time, std::vector<Action> actions) {
     if (!std::filesystem::exists(folder))
 		std::filesystem::create_directory(folder);
 
@@ -266,6 +263,8 @@ void RecordsManager::saveCompletion(std::filesystem::path folder, float time, st
     }
 
     saveJSON(actionsJson, actionsPath);
+
+    return realFolder;
 }
 
 std::unordered_map<VehicleType, int> RecordsManager::getCompletionIcons(std::filesystem::path path) {
