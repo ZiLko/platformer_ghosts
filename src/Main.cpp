@@ -253,7 +253,7 @@ class $modify(PlayLayer) {
 		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || PlayerManager::getSpectated()) return;
 
         Recorder& r = Recorder::get();
-        r.compareTime = PlayerManager::getTime();
+        r.compareTime = PlayerManager::get().players.empty() ? RecordsManager::getBestCompletion(EditorIDs::getID(PlayLayer::get()->m_level)).info.time : PlayerManager::getTime();
         r.time = 0.f;
         if (!PlayerManager::getIsRacing())
             r.compareTime = RecordsManager::getBestCompletion(EditorIDs::getID(PlayLayer::get()->m_level)).info.time;
