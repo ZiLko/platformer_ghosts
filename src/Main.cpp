@@ -211,6 +211,7 @@ class $modify(PlayLayer) {
         PlayerManager::get().uiName = nullptr;
         PlayerManager::resetState();
         PlayerManager::stopSpectating();
+        PlayerManager::get().players.clear();
         PlayLayer::onQuit();
     }
 
@@ -249,13 +250,13 @@ class $modify(PlayLayer) {
 
         PlayerManager::hideIcons();
 
+		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || PlayerManager::getSpectated()) return;
+
         Recorder& r = Recorder::get();
         r.compareTime = PlayerManager::getTime();
         r.time = 0.f;
         if (!PlayerManager::getIsRacing())
             r.compareTime = RecordsManager::getBestCompletion(EditorIDs::getID(PlayLayer::get()->m_level)).info.time;
-
-		if (!m_levelSettings->m_platformerMode || m_isTestMode || m_isPracticeMode || PlayerManager::getSpectated()) return;
 
         int frame = Recorder::get().totalFrame;
         float time = frame / 240.f;

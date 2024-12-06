@@ -1,3 +1,7 @@
+# 1.2.1
+
+* Fixed crash on level complete.
+
 # 1.2.0
 
 * Added multiple ghosts support (had to rewrite the whole mod).
