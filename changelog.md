@@ -1,3 +1,7 @@
+# 1.2.3
+
+* Made ghost interface default to true so more people know about it.
+
 # 1.2.2
 
 * Improved ghost interface and added two settings for it.
