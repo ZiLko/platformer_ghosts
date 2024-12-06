@@ -1,4 +1,5 @@
 #include "../Includes.hpp"
+#include "../UI/GhostUI.hpp"
 
 class Player {
 
@@ -87,9 +88,7 @@ class PlayerManager {
 
 public:
 
-    SimplePlayer* uiIcon = nullptr;
-    CCLabelBMFont* uiTime = nullptr;
-    CCLabelBMFont* uiName = nullptr;
+    GhostUI* ui = nullptr;
 
     int currentFrame = 0;
     int currentRace = 0;
@@ -103,7 +102,7 @@ public:
     bool canReset = false;
     bool disabled = false;
 
-
+    ReplayInfo spectateInfo;
     std::vector<Player> players;
     std::unordered_map<float, Player> times;
 

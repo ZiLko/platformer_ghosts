@@ -113,9 +113,7 @@ void PlayerManager::setup(PlayLayer* pl) {
     shouldRestart = false;
     canReset = false;
     disabled = false;
-    uiIcon = nullptr;
-    uiName = nullptr;
-    uiTime = nullptr;
+    ui = nullptr;
     players.clear();
     times.clear();
 
@@ -160,55 +158,22 @@ void PlayerManager::stopSpectating() {
 }
 
 void PlayerManager::updateUI() {
-    PlayLayer* pl = PlayLayer::get();
-    if (!pl) return;
+    if (!ui) {
+        PlayLayer* pl = PlayLayer::get();
+        if (!pl) return;
 
-    if (!Mod::get()->getSettingValue<bool>("show_ui") || players.empty() || getDisabled()) {
-        if (!uiIcon) return;
-        uiIcon->removeFromParentAndCleanup(true);
-        uiTime->removeFromParentAndCleanup(true);
-        uiName->removeFromParentAndCleanup(true);
-        uiIcon = nullptr;
-        uiTime = nullptr;
-        uiName = nullptr;
+        ui = GhostUI::create();
+        ui->setPosition({0, pl->getContentSize().height});
+        pl->addChild(ui);
+    }
+
+    if (!ui) return;
+    if (!PlayLayer::get()) {
+        ui = nullptr;
         return;
-    } else if (!uiIcon) {
-        cocos2d::CCSize size = pl->getContentSize();
-        uiIcon = SimplePlayer::create(1);
-        uiIcon->setScale(0.7f);
-        uiIcon->setPosition({23, size.height - 23});
-        uiIcon->setID("ui-icon"_spr);
-        pl->addChild(uiIcon, 500);
-
-        uiTime = CCLabelBMFont::create("1.008s", "goldFont.fnt");
-        uiTime->setAnchorPoint({0, 0.5f});
-        uiTime->setPosition({39, size.height - 32});
-        uiTime->setScale(0.525f);
-        uiTime->setID("ui-time"_spr);
-        pl->addChild(uiTime, 500);
-
-        uiName = CCLabelBMFont::create("Zilko", "goldFont.fnt");
-        uiName->setAnchorPoint({0, 0.5f});
-        uiName->setScale(0.525f);
-        uiName->setPosition({39, size.height - 14});
-        uiName->setID("ui-name"_spr);
-        pl->addChild(uiName, 500);
-    }
-    
-    ReplayInfo info;
-    bool started = false;
-    for (Player player : players) {
-        if (player.info.time < info.time || !started)
-            info = player.info;
-        started = true;
     }
 
-    PlayerColors colors = info.colors;
-    if (info.icons.contains(VehicleType::Cube))
-        uiIcon->updatePlayerFrame(info.icons.at(VehicleType::Cube), IconType::Cube);
-    Player::setPlayerIconColors(uiIcon, false, colors.color1, colors.color2, colors.glowColor, colors.glowEnabled);
-    uiTime->setString(RecordsManager::getFormattedTime(info.time).c_str());
-    uiName->setString(info.username.c_str());
+    ui->update();
 }
 
 std::vector<Action> Player::getActions() {
@@ -542,6 +507,7 @@ void Player::handlePlaying(GJBaseGameLayer* bgl, int frame) {
 void Player::startSpectating(Replay replay) {
     PlayerManager::getIsSpectating() = true;
     PlayerManager::getCurrentSpectate() = replay.info.time;
+    PlayerManager::get().spectateInfo = replay.info;
     PlayerManager::getShouldRestart() = true;
     PlayerManager::getCanReset() = false;
     loadReplay(replay);

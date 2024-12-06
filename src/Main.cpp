@@ -1,7 +1,7 @@
 #include "RecordsManager/RecordsManager.hpp"
-#include "Recorder/Recorder.hpp"
 #include "UI/RecordsLayer.hpp"
 #include "UI/ManagerLayer.hpp"
+#include "Recorder/Recorder.hpp"
 #include "Player/Player.hpp"
 
 #include <Geode/modify/PlayLayer.hpp>
@@ -34,7 +34,13 @@ $execute {
     });
     geode::listenForSettingChanges("off_screen_indicators", +[](bool value) {
         PlayerManager::updateCamera();
+    });
+    geode::listenForSettingChanges("ui_opacity", +[](int64_t value) {
+        PlayerManager::get().updateUI();
     }); 
+    geode::listenForSettingChanges("ui_scale", +[](double value) {
+        PlayerManager::get().updateUI();
+    });
 
     PlayerManager::get().disabled = Mod::get()->getSettingValue<bool>("player_disabled");
     Recorder::get().disabled = Mod::get()->getSettingValue<bool>("recorder_disabled");
@@ -206,9 +212,7 @@ class $modify(PlayerObject) {
 class $modify(PlayLayer) {
 
     void onQuit() {
-        PlayerManager::get().uiIcon = nullptr;
-        PlayerManager::get().uiTime = nullptr;
-        PlayerManager::get().uiName = nullptr;
+        PlayerManager::get().ui = nullptr;
         PlayerManager::resetState();
         PlayerManager::stopSpectating();
         PlayerManager::get().players.clear();
@@ -311,6 +315,11 @@ class $modify(PauseLayer) {
         CCNode* menu = this->getChildByID("left-button-menu");
         menu->addChild(btn);
         menu->updateLayout();
+    }
+
+    void onEdit(CCObject* obj) {
+        PauseLayer::onEdit(obj);
+        PlayerManager::get().ui = nullptr;
     }
 
 };

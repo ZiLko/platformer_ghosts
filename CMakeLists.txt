@@ -14,6 +14,7 @@ add_library(${PROJECT_NAME} SHARED
     src/UI/RecordsLayer.cpp
     src/UI/ManagerLayer.cpp
     src/UI/ListLayer.cpp
+    src/UI/GhostUI.cpp
 )
 
 if (NOT DEFINED ENV{GEODE_SDK})

@@ -10,7 +10,7 @@
 	],
 	"id": "zilko.platformer_ghosts",
 	"name": "Platformer Ghosts",
-	"version": "v1.2.1",
+	"version": "v1.2.2",
 	"developer": "Zilko",
 	"description": "Adds ghosts to platformer mode.",
 	"repository": "https://github.com/ZiLko/platformer_ghosts",
@@ -110,9 +110,25 @@
 			"max": 9999
 		},
 		"show_ui": {
-			"name": "Show Ghost Time",
+			"name": "Show Ghost Interface",
 			"type": "bool",
 			"default": false
+		},
+		"ui_opacity": {
+			"name": "Interface Opacity",
+			"description": "Opacity of the ghost interface. (0-255)",
+			"type": "int",
+			"default": 255,
+			"max": 255,
+			"min": 0
+		},
+		"ui_scale": {
+			"name": "Interface Scale",
+			"description": "Scale of the ghost interface.",
+			"type": "float",
+			"default": 1,
+			"max": 5,
+			"min": 0
 		}
 	}
 }

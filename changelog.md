@@ -1,3 +1,7 @@
+# 1.2.2
+
+* Improved ghost interface and added two settings for it.
+
 # 1.2.1
 
 * Fixed crash on level complete.
