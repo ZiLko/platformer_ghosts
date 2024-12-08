@@ -10,6 +10,7 @@ public:
     static std::filesystem::path saveCompletion(std::filesystem::path, float, std::vector<Action>);
     static void deleteCompletion(std::filesystem::path);
 
+    static std::string getUsername();
     static std::string getFormattedTime(float);
     static std::vector<std::pair<ReplayInfo, std::filesystem::path>> getLevelCompletions(int);
     static std::vector<GhostLevel> getSavedLevels();

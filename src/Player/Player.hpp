@@ -114,6 +114,8 @@ public:
     static void removePlayer(Player);
     static bool containsTime(float);
     static void hideIcons();
+    static void resetButtons();
+    static void handleButton(PlayLayer*, PlayerButton, PlayerObject*, bool);
 
     static void stopSpectating();
     static void clear();

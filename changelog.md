@@ -1,3 +1,9 @@
+# 1.2.4
+
+* Made ghost clicks show when watching a ghost.
+* Fixed android export ghost UI being wrongly positioned.
+* Fixed player name being empty if you werent logged in. 
+
 # 1.2.3
 
 * Made ghost interface default to true so more people know about it.

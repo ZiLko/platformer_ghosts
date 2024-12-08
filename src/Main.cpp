@@ -78,6 +78,7 @@ class $modify(GameLayer, GJBaseGameLayer) {
         PlayLayer* pl = PlayLayer::get();
 		if (!pl) return;
 
+
 		if (m_gameState.m_currentProgress <= 1) {
             Recorder::resetState(m_levelSettings->m_platformerMode && !m_isTestMode && !m_isPracticeMode);
             PlayerManager::resetState();
@@ -132,17 +133,9 @@ class $modify(GameLayer, GJBaseGameLayer) {
 
 class $modify(PlayerObject) {
 
-    static void onModify(auto& self) {
-        if (!self.setHookPriority("PlayerObject::playSpawnEffect", 100))
-            log::warn("PlayerObject::playSpawnEffect hook priority fail xD.");
-        if (!self.setHookPriority("PlayerObject::playDeathEffect", 100))
-            log::warn("PlayerObject::playDeathEffect hook priority fail xD.");
-    }
-
     bool shouldReturnPlayer() {
         PlayLayer* pl = PlayLayer::get();
         if (!pl) return true;
-
         if (shouldReturn(pl)) return true;
         if (this != pl->m_player1 && this != pl->m_player2) return true;
 
@@ -152,6 +145,8 @@ class $modify(PlayerObject) {
     bool pushButton(PlayerButton btn) {
         if (!PlayerManager::canClick()) return false;
         if (!PlayerObject::pushButton(btn)) return false;
+
+        PlayerManager::handleButton(PlayLayer::get(), btn, this, true);
 
         if (shouldReturnPlayer()) return true;
 
@@ -165,12 +160,19 @@ class $modify(PlayerObject) {
         if (!PlayerManager::canClick()) return false;
         if (!PlayerObject::releaseButton(btn)) return false;
 
+        PlayerManager::handleButton(PlayLayer::get(), btn, this, false);
+        
         if (shouldReturnPlayer()) return true;
         
         int frame = Recorder::get().totalFrame;
         Recorder::handleInput(frame, static_cast<int>(btn), false, this == PlayLayer::get()->m_player2);
 
         return true;
+    }
+
+    void playerDestroyed(bool v1) {
+        PlayerObject::playerDestroyed(v1);
+        PlayerManager::resetButtons();
     }
 
     void playDeathEffect() {

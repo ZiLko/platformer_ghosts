@@ -20,6 +20,11 @@ void RecordsManager::saveJSON(nlohmann::json json, std::filesystem::path path) {
     }
 }
 
+std::string RecordsManager::getUsername() {
+    std::string username = GJAccountManager::get()->m_username;
+    return username.empty() ? "No Name" : username;
+}
+
 std::string RecordsManager::getFormattedTime(float time) {
     std::string ret = "";
     int hours = static_cast<int>(time / 3600);
@@ -124,7 +129,7 @@ Replay RecordsManager::getBestCompletion(int levelId) {
     std::vector<std::pair<ReplayInfo, std::filesystem::path>> replays = getLevelCompletions(levelId);
     Replay replay;
     if (replays.empty()) return replay;
-    std::string username = GJAccountManager::sharedState()->m_username;
+    std::string username = RecordsManager::getUsername();
     for (std::pair<ReplayInfo, std::filesystem::path> r : replays) {
         if (r.first.username == username) {
             replay.info = r.first;
@@ -194,7 +199,7 @@ std::filesystem::path RecordsManager::saveCompletion(std::filesystem::path folde
     std::filesystem::path infoPath = realFolder / "info.json";
     std::filesystem::path actionsPath = realFolder / "actions.json";
 
-    std::string username = GJAccountManager::sharedState()->m_username;
+    std::string username = RecordsManager::getUsername();
     std::string levelName = "";
     int levelId = 0;
 

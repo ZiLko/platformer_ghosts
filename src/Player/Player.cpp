@@ -15,6 +15,36 @@ void PlayerManager::hideIcons() {
         player.hideIcons();
 }
 
+void PlayerManager::resetButtons() {
+    PlayLayer* pl = PlayLayer::get();
+    if (!pl) return;
+
+    handleButton(pl, PlayerButton::Jump, pl->m_player1, false);
+    handleButton(pl, PlayerButton::Left, pl->m_player1, false);
+    handleButton(pl, PlayerButton::Right, pl->m_player1, false);
+
+    handleButton(pl, PlayerButton::Jump, pl->m_player2, false);
+    handleButton(pl, PlayerButton::Left, pl->m_player2, false);
+    handleButton(pl, PlayerButton::Right, pl->m_player2, false);
+}
+
+void PlayerManager::handleButton(PlayLayer* pl, PlayerButton btn, PlayerObject* player, bool down) {
+    if (!PlayerManager::getIsSpectating()) return;
+    if (!pl) return;
+    if (!pl->m_uiLayer) return;
+    if (player != pl->m_player1 && player != pl->m_player2) return;
+    bool player2 = player == pl->m_player2;
+
+    std::string id = fmt::format("platformer-p{}-{}-button", static_cast<int>(player2) + 1, btn == PlayerButton::Jump ? "jump" : "move");
+    int index = btn == PlayerButton::Jump ? 0 : static_cast<int>(btn != PlayerButton::Left);
+    CCNode* uiNode = pl->m_uiLayer->getChildByID(id);
+
+    if (!uiNode) return;
+    if (CCSprite* spr = uiNode->getChildByType<CCSprite>(index))
+        spr->setOpacity(down ? 165 : 255);
+
+}
+
 void PlayerManager::addPlayer(Replay replay, PlayLayer* pl) {
     if (!pl) return;
 

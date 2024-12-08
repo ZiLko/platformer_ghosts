@@ -90,7 +90,7 @@ void RecordsLayer::addList() {
         if (i > 99) break;
 
         if (personalBest == -1) {
-            std::string username = GJAccountManager::sharedState()->m_username;
+            std::string username = RecordsManager::getUsername();
             if (username == replays[i].first.username)
                 personalBest = i;
         }

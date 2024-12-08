@@ -443,13 +443,8 @@ bool ExportLayer::setup(std::filesystem::path path) {
 	this->path = path;
 	setTitle("Export Ghost");
 	CCMenu* menu = CCMenu::create();
+	menu->setPosition({0, 0});
 	m_mainLayer->addChild(menu);
-
-	cocos2d::CCPoint offset = (CCDirector::sharedDirector()->getWinSize() - m_mainLayer->getContentSize()) / 2;
-    m_mainLayer->setPosition(m_mainLayer->getPosition() - offset);
-    m_closeBtn->setPosition(m_closeBtn->getPosition() + offset);
-    m_bgSprite->setPosition(m_bgSprite->getPosition() + offset);
-    m_title->setPosition(m_title->getPosition() + offset);
 
 	input = TextInput::create(125, "Filename", "bigFont.fnt");
 	input->getInputNode()->setAllowedChars("abcdefghijklmnopqrstuvwxyz1234567890_");
