@@ -37,6 +37,7 @@ jobs:
         uses: geode-sdk/build-geode-mod@main
         with:
           bindings: geode-sdk/bindings
+          cli: v3.2.2
           build-config: ${{ matrix.config.build-type || 'Release' }}
           export-pdb: true
           bindings-ref: main
