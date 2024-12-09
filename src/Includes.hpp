@@ -127,6 +127,7 @@ struct ReplayInfo {
 		{VehicleType::Cube, 1}
 	};
 	PlayerColors colors;
+	bool isNew = false;
 };
 
 struct Replay {

@@ -33,17 +33,15 @@ void PlayerManager::handleButton(PlayLayer* pl, PlayerButton btn, PlayerObject* 
     if (!pl) return;
     if (!pl->m_uiLayer) return;
     if (player != pl->m_player1 && player != pl->m_player2) return;
-    bool player2 = player == pl->m_player2;
 
-    std::string id = fmt::format("platformer-p{}-{}-button", static_cast<int>(player2) + 1, btn == PlayerButton::Jump ? "jump" : "move");
+    bool player2 = player == pl->m_player2;
     int index = btn == PlayerButton::Jump ? 0 : static_cast<int>(btn != PlayerButton::Left);
-    CCNode* uiNode = pl->m_uiLayer->getChildByID(id);
-    int col = down ? 150 : 255;
+    CCNode* uiNode = pl->m_uiLayer->getChildByType<GJUINode>((btn != PlayerButton::Jump ? 0 : 2) + static_cast<int>(player2));
 
     if (!uiNode) return;
     if (CCSprite* spr = uiNode->getChildByType<CCSprite>(index)) {
+        int col = down ? 150 : 255;
         spr->setColor(ccc3(col, col, col));
-        log::debug("waxd");
     }
 
 }
@@ -477,6 +475,16 @@ void Player::handleActions() {
 
     if (!player1 || !player2) return;
 
+    if (info.isNew && isSpectating) {
+        PlayLayer* pl = PlayLayer::get();
+        player1->setPosition(pl->m_player1->getPosition());
+        player1->setRotation(pl->m_player1->getRotation());
+        if (pl->m_gameState.m_isDualMode) {
+            player2->setPosition(pl->m_player2->getPosition());
+            player2->setRotation(pl->m_player2->getRotation());
+        }
+    }
+
     while (currentAction < actions.size() && actions[currentAction].frame <= PlayerManager::getCurrentFrame()) {
         Action action = actions[currentAction];
 
@@ -495,15 +503,11 @@ void Player::handleActions() {
 			
         if (action.type != ActionType::Position)
             updateUpsideDownState();
-        else if (isSpectating) {
+        else if (isSpectating && !info.isNew) {
             PlayLayer* pl = PlayLayer::get();
-
-            player1->setPosition(pl->m_player1->getPosition());
-            player1->setRotation(pl->m_player1->getRotation());
-            if (pl->m_gameState.m_isDualMode) {
-                player2->setPosition(pl->m_player2->getPosition());
-                player2->setRotation(pl->m_player2->getRotation());
-            }
+            pl->m_player1->setPosition(player1->getPosition());
+            if (pl->m_gameState.m_isDualMode)
+                pl->m_player2->setPosition(player2->getPosition());
 
             PlayerManager::getUpdatePlayer() = true;
             PlayerManager::getSpectated() = true;
@@ -582,6 +586,7 @@ void Player::stopSpectating() {
     isSpectating = false;
     PlayerManager::getCanReset() = false;
     PlayerManager::getShouldRestart() = true;
+    PlayerManager::resetButtons();
     
     PlayLayer::get()->m_player1->setVisible(true);
     PlayLayer::get()->m_player1->releaseAllButtons();
@@ -751,7 +756,7 @@ void Player::handleCompletion() {
 }
 
 void Player::handlePositionAction(Action action) {
-    if (isSpectating) return;
+    if (isSpectating && info.isNew) return;
     PositionData pos = std::get<PositionData>(action.data);
 
     if (pos.p1.position.x != 0.f)

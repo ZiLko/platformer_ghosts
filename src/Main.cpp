@@ -77,7 +77,8 @@ class $modify(GameLayer, GJBaseGameLayer) {
         
         PlayLayer* pl = PlayLayer::get();
 		if (!pl) return;
-
+        m_uiLayer->getChildByType<GJUINode>(0)->setVisible(true);
+        m_uiLayer->getChildByType<GJUINode>(2)->setVisible(true);
 
 		if (m_gameState.m_currentProgress <= 1) {
             Recorder::resetState(m_levelSettings->m_platformerMode && !m_isTestMode && !m_isPracticeMode);

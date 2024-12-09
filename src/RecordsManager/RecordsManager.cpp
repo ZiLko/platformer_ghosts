@@ -153,6 +153,7 @@ ReplayInfo RecordsManager::getCompletionInfo(std::filesystem::path path) {
     info.date = json["date"].get<std::string>();
     info.levelId = json["level_id"].get<int>();
     info.time = json["time"].get<float>();
+    info.isNew = json.contains("new");
 
     return info;
 }
@@ -222,6 +223,7 @@ std::filesystem::path RecordsManager::saveCompletion(std::filesystem::path folde
     infoJson["time"] = time;
     infoJson["level_name"] = levelName;
     infoJson["level_id"] = levelId;
+    infoJson["new"] = true;
 
     GameManager* gm = GameManager::get();
 

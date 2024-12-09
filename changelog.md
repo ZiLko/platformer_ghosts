@@ -1,3 +1,8 @@
+# 1.2.5
+
+* Fixed inputs not showing when watching a ghost if node ids was not installed.
+* Fixed spectator bugs and improved something u have to find out what i improved.
+
 # 1.2.4
 
 * Made ghost clicks show when watching a ghost.

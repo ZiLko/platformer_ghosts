@@ -59,7 +59,7 @@
 			"name": "Ghost Smoothness",
 			"description": "How smooth the ghosts will appear, measured in updates per second (directly proportional to the file size).",
 			"type": "int",
-			"min": 15,
+			"min": 1,
 			"max": 240,
 			"default": 60
 		},
@@ -129,12 +129,6 @@
 			"default": 30,
 			"min": 1,
 			"max": 9999
-		},
-		"legacy_player": {
-			"name": "Legacy Ghost Watching",
-			"description": "dont enable if u dont know",
-			"type": "bool",
-			"default": false
 		}
 	}
 }
