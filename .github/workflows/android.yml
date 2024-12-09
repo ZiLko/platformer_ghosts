@@ -1,4 +1,4 @@
-name: All Platforms
+name: Android
 
 on:
   workflow_dispatch:

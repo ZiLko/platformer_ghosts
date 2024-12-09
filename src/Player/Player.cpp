@@ -36,7 +36,7 @@ void PlayerManager::handleButton(PlayLayer* pl, PlayerButton btn, PlayerObject* 
 
     bool player2 = player == pl->m_player2;
     log::debug("{} {} {}", getCurrentFrame(), static_cast<int>(btn), player2);
-    int index = btn == PlayerButton::Jump ? 0 : (static_cast<int>(btn) - 1);
+    int index = btn == PlayerButton::Jump ? 0 : (btn == PlayerButton::Left ? 0 : 1);
     CCNode* uiNode = pl->m_uiLayer->getChildByType<GJUINode>((btn != PlayerButton::Jump ? 0 : 2) + static_cast<int>(player2));
 
     if (!uiNode) return;
