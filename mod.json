@@ -10,7 +10,7 @@
 	],
 	"id": "zilko.platformer_ghosts",
 	"name": "Platformer Ghosts",
-	"version": "v1.2.4",
+	"version": "v1.2.5",
 	"developer": "Zilko",
 	"description": "Adds ghosts to platformer mode.",
 	"repository": "https://github.com/ZiLko/platformer_ghosts",
@@ -89,26 +89,6 @@
 			"type": "bool",
 			"default": false
 		},
-		"no_time_difference": {
-			"name": "Disable Time Difference",
-			"description": "Disables the time difference shown in endscreen.",
-			"type": "bool",
-			"default": false
-		},
-		"off_screen_indicators": {
-			"name": "Off-screen indicators",
-			"description": "Displays the direction of ghosts when they are off-screen",
-			"type": "bool",
-			"default": true
-		},
-		"max_ghosts": {
-			"name": "Max Ghosts",
-			"description": "Maximum amount of ghosts that will be saved per level.",
-			"type": "int",
-			"default": 30,
-			"min": 1,
-			"max": 9999
-		},
 		"show_ui": {
 			"name": "Show Ghost Interface",
 			"type": "bool",
@@ -129,6 +109,32 @@
 			"default": 1,
 			"max": 5,
 			"min": 0
+		},
+		"no_time_difference": {
+			"name": "Disable Time Difference",
+			"description": "Disables the time difference shown in endscreen.",
+			"type": "bool",
+			"default": false
+		},
+		"off_screen_indicators": {
+			"name": "Off-screen indicators",
+			"description": "Displays the direction of ghosts when they are off-screen",
+			"type": "bool",
+			"default": true
+		},
+		"max_ghosts": {
+			"name": "Max Ghosts",
+			"description": "Maximum amount of ghosts that will be saved per level.",
+			"type": "int",
+			"default": 30,
+			"min": 1,
+			"max": 9999
+		},
+		"legacy_player": {
+			"name": "Legacy Ghost Watching",
+			"description": "dont enable if u dont know",
+			"type": "bool",
+			"default": false
 		}
 	}
 }

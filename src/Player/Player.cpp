@@ -38,10 +38,13 @@ void PlayerManager::handleButton(PlayLayer* pl, PlayerButton btn, PlayerObject* 
     std::string id = fmt::format("platformer-p{}-{}-button", static_cast<int>(player2) + 1, btn == PlayerButton::Jump ? "jump" : "move");
     int index = btn == PlayerButton::Jump ? 0 : static_cast<int>(btn != PlayerButton::Left);
     CCNode* uiNode = pl->m_uiLayer->getChildByID(id);
+    int col = down ? 150 : 255;
 
     if (!uiNode) return;
-    if (CCSprite* spr = uiNode->getChildByType<CCSprite>(index))
-        spr->setOpacity(down ? 165 : 255);
+    if (CCSprite* spr = uiNode->getChildByType<CCSprite>(index)) {
+        spr->setColor(ccc3(col, col, col));
+        log::debug("waxd");
+    }
 
 }
 
