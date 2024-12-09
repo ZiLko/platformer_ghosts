@@ -35,7 +35,8 @@ void PlayerManager::handleButton(PlayLayer* pl, PlayerButton btn, PlayerObject* 
     if (player != pl->m_player1 && player != pl->m_player2) return;
 
     bool player2 = player == pl->m_player2;
-    int index = btn == PlayerButton::Jump ? 0 : static_cast<int>(btn != PlayerButton::Left);
+    log::debug("{} {} {}", getCurrentFrame(), static_cast<int>(btn), player2);
+    int index = btn == PlayerButton::Jump ? 0 : (static_cast<int>(btn) - 1);
     CCNode* uiNode = pl->m_uiLayer->getChildByType<GJUINode>((btn != PlayerButton::Jump ? 0 : 2) + static_cast<int>(player2));
 
     if (!uiNode) return;
@@ -528,7 +529,7 @@ void Player::handlePlaying(GJBaseGameLayer* bgl, int frame) {
     if (!player1 || !player2) {
 		player1 = static_cast<PlayerObject*>(bgl->m_objectLayer->getChildByID("ghost-player1"_spr));
 		player2 = static_cast<PlayerObject*>(bgl->m_objectLayer->getChildByID("ghost-player2"_spr));
-    } 
+    }
 
 	handleActions();
 
@@ -577,17 +578,19 @@ void Player::stopRacing() {
 
 void Player::stopSpectating() {
     if (!isSpectating) return;
+
     actions.clear();
     currentAction = 0;
+    isRacing = false;
+    isSpectating = false;
+    
     PlayerManager::getIsSpectating() = false;
     PlayerManager::getCurrentSpectate() = 0.f;
     PlayerManager::getSpectatorInput() = false;
-    isRacing = false;
-    isSpectating = false;
     PlayerManager::getCanReset() = false;
     PlayerManager::getShouldRestart() = true;
     PlayerManager::resetButtons();
-    
+
     PlayLayer::get()->m_player1->setVisible(true);
     PlayLayer::get()->m_player1->releaseAllButtons();
     PlayLayer::get()->m_player2->releaseAllButtons();

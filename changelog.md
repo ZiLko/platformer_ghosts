@@ -1,3 +1,7 @@
+# 1.2.7
+
+* Fixed ghost left input showing as right input too on android.
+
 # 1.2.6
 
 * fixed inputs always showing 

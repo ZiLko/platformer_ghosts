@@ -1,9 +1,10 @@
-name: Android lol
+name: All Platforms
+
 on:
   workflow_dispatch:
   push:
     branches:
-      - "maign"
+      - "main"
 
 jobs:
   build:
@@ -11,6 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
+          
         - name: Android32
           os: ubuntu-latest
           target: Android32
@@ -25,6 +27,7 @@ jobs:
         uses: geode-sdk/build-geode-mod@main
         with:
           bindings: geode-sdk/bindings
+          cli: v3.2.2
           build-config: ${{ matrix.config.build-type || 'Release' }}
           export-pdb: true
           bindings-ref: main
@@ -39,7 +42,9 @@ jobs:
     steps:
       - uses: geode-sdk/build-geode-mod/combine@main
         id: build
-
+        with:
+          cli: v3.2.2
+    
       - uses: actions/upload-artifact@v4
         with:
           name: Build Output
