@@ -1,3 +1,7 @@
+# 1.2.6
+
+* fixed inputs always showing 
+
 # 1.2.5
 
 * Fixed inputs not showing when watching a ghost if node ids was not installed.
