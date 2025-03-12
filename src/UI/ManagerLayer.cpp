@@ -117,19 +117,21 @@ void ManagerLayer::fileChosen(Task<Result<std::filesystem::path>>::Event* event)
 	actionsJson["actions"] = json["actions"];
 	std::string name = std::to_string(infoJson["time"].get<float>()) + "_" + path.stem().string(); 	
 
-	std::filesystem::path folder1 = Mod::get()->getSaveDir() / std::to_string(infoJson["level_id"].get<int>());
-	if (!std::filesystem::exists(folder1))
-		std::filesystem::create_directory(folder1);
+	std::filesystem::path folder = Mod::get()->getSaveDir() / std::to_string(infoJson["level_id"].get<int>());
+	if (!std::filesystem::exists(folder))
+		if (!utils::file::createDirectoryAll(folder).isOk())
+		    return;
 
-	std::filesystem::path folder2 = folder1 / name;
+	std::filesystem::path folder2 = folder / name;
 
 	int iterations = 0;
 	while (std::filesystem::exists(folder2)) {
         iterations++;
-        folder2 = folder1 / fmt::format("{} ({})", name, std::to_string(iterations));
+        folder2 = folder / fmt::format("{} ({})", name, std::to_string(iterations));
     }
 
-	if (!std::filesystem::create_directory(folder2)) return;
+	if (!utils::file::createDirectoryAll(folder).isOk())
+		return;
 
 	RecordsManager::saveJSON(actionsJson, folder2 / "actions.json");
 	RecordsManager::saveJSON(infoJson, folder2 / "info.json");
@@ -469,7 +471,9 @@ void ExportLayer::onExport(CCObject*) {
 
 	std::filesystem::path folder = Mod::get()->getSaveDir() / "exports";
 
-	if (!std::filesystem::exists(folder)) std::filesystem::create_directory(folder);
+	if (!std::filesystem::exists(folder))
+		if (!utils::file::createDirectoryAll(folder).isOk())
+		    return;
 
 	std::string savePath = (folder / filename).string();
 	int iterations = 0;

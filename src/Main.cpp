@@ -147,7 +147,7 @@ class $modify(PlayerObject) {
 
         PlayerManager::handleButton(PlayLayer::get(), btn, this, true);
 
-        if (shouldReturnPlayer()) return true;
+        if (shouldReturnPlayer() || static_cast<int>(btn) > 3) return true;
 
         int frame = Recorder::get().totalFrame;
         Recorder::handleInput(frame, static_cast<int>(btn), true, this == PlayLayer::get()->m_player2);
@@ -284,7 +284,7 @@ class $modify(PauseLayer) {
         PlayLayer* pl = PlayLayer::get();
         if (!pl) return;
 
-        if (!pl->m_levelSettings->m_platformerMode) return;
+        if (!pl->m_levelSettings->m_platformerMode || Mod::get()->getSettingValue<bool>("button_disabled")) return;
 
         CCSprite* sprite = CCSprite::createWithSpriteFrameName("GJ_plainBtn_001.png");
         sprite->setScale(1.05);        

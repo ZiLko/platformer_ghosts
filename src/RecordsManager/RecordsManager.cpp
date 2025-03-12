@@ -94,6 +94,8 @@ std::vector<GhostLevel> RecordsManager::getSavedLevels() {
 void RecordsManager::handleCompletion(int levelId, float time, std::vector<Action> actions) {
     std::filesystem::path saveFolder = saveCompletion(Mod::get()->getSaveDir() / std::to_string(levelId), time, actions);
     int amount = Mod::get()->getSettingValue<int64_t>("load_ghosts");
+
+    if (!std::filesystem::exists(saveFolder)) return;
     
     if (PlayerManager::get().players.size() < amount || Mod::get()->getSettingValue<bool>("load_all_ghosts")) {
         Replay replay = {
@@ -190,13 +192,16 @@ std::vector<Action> RecordsManager::getCompletionActions(std::filesystem::path p
 
 std::filesystem::path RecordsManager::saveCompletion(std::filesystem::path folder, float time, std::vector<Action> actions) {
     if (!std::filesystem::exists(folder))
-		std::filesystem::create_directory(folder);
+        if (!utils::file::createDirectoryAll(folder).isOk())
+		    return folder;
 
     auto now = std::chrono::system_clock::now();
     auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
     std::filesystem::path realFolder = folder / (fmt::format("{}_{}", std::to_string(time), std::to_string(timestamp)));
 	
-    std::filesystem::create_directory(realFolder);
+    if (!utils::file::createDirectoryAll(realFolder).isOk())
+		return realFolder;
+
     std::filesystem::path infoPath = realFolder / "info.json";
     std::filesystem::path actionsPath = realFolder / "actions.json";
 

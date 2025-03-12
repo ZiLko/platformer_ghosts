@@ -1,6 +1,9 @@
 # 1.2.7
 
+* Added Disable Pause Menu Button setting.
 * Fixed ghost left input showing as right input too on android.
+* Possibly fixed filesystem crashes.
+* Changed Show Ghost Interface setting default to false.
 
 # 1.2.6
 
